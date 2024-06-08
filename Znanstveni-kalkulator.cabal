@@ -1,0 +1,25 @@
+cabal-version:       3.0
+name:                Znanstveni-kalkulator
+version:             0.1.0.0
+synopsis:            Znanstveni kalkulator
+-- description:
+license:             MIT
+license-file:        LICENSE
+author:              Marko Papić
+maintainer:          marko.papic222@gmail.com
+-- copyright:
+category:            Math
+build-type:          Simple
+extra-source-files:  CHANGELOG.md, static/style.css
+
+common warnings
+  ghc-options: -Wall
+
+executable Znanstveni-kalkulator
+  import:             warnings
+  main-is:            Main.hs
+  other-modules:      MathOperations
+  -- other-extensions:
+  build-depends:      base >=4.17.2.1, threepenny-gui, text, directory, filepath
+  hs-source-dirs:     src
+  default-language:   Haskell2010
