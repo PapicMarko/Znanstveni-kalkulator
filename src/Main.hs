@@ -138,7 +138,7 @@ setup window = do
     -- GUI elements
     input <- UI.textarea #. "input" # set (attr "placeholder") "Unesite izraz"
     resultLabel <- UI.span #. "result" # set text "Rezultat će biti prikazan ovdje"
-    calculateButton <- UI.button #. "button" # set text "Izračunaj"
+    calculateButton <- UI.button #. "button" # set text "="
 
     -- Operator buttons
     addButton <- UI.button #. "button-op" # set text "+"
