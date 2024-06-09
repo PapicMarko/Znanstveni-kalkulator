@@ -51,7 +51,8 @@ factor = try float
      <|> (fromInteger <$> integer)
      <|> parens exprParser
      <|> (Token.reservedOp lexer "sqrt" >> (either (const 0) id . sqrt' <$> parens exprParser))
-     <|> (Token.reservedOp lexer "log" >> do { base <- factor; x <- factor; return (either (const 0) id (logarithm base x)) })
+     <|> (Token.reservedOp lexer "log" >> (parens exprParser >>= \x -> return (logBase 10 x)))
+     <|> (Token.reservedOp lexer "log" >> do { base <- factor; whiteSpace; x <- factor; return (either (const 0) id (logarithm base x)) })
      <|> (Token.reservedOp lexer "sin" >> sin' <$> parens exprParser)
      <|> (Token.reservedOp lexer "cos" >> cos' <$> parens exprParser)
      <|> (Token.reservedOp lexer "tan" >> tan' <$> parens exprParser)
@@ -193,6 +194,14 @@ setup window = do
             current <- get value input
             void $ element input # set value (current ++ num)
 
+    let appendFunc func = do
+            current <- get value input
+            void $ element input # set value (current ++ func ++ "()")
+
+    let appendLog = do
+            current <- get value input
+            void $ element input # set value (current ++ "log() ")
+
     on UI.click oneButton $ \_ -> appendNum "1"
     on UI.click twoButton $ \_ -> appendNum "2"
     on UI.click threeButton $ \_ -> appendNum "3"
@@ -209,11 +218,11 @@ setup window = do
     on UI.click subButton $ const $ appendOp "-"
     on UI.click mulButton $ const $ appendOp "*"
     on UI.click divButton $ const $ appendOp "/"
-    on UI.click logButton $ const $ appendOp "log"
-    on UI.click sqrtButton $ const $ appendOp "sqrt"
-    on UI.click sinButton $ const $ appendOp "sin"
-    on UI.click cosButton $ const $ appendOp "cos"
-    on UI.click tanButton $ const $ appendOp "tan"
+    on UI.click logButton $ const appendLog
+    on UI.click sqrtButton $ const $ appendFunc "sqrt"
+    on UI.click sinButton $ const $ appendFunc "sin"
+    on UI.click cosButton $ const $ appendFunc "cos"
+    on UI.click tanButton $ const $ appendFunc "tan"
     on UI.click powerButton $ const $ appendOp "**"
     on UI.click lparenButton $ const $ appendOp "("
     on UI.click rparenButton $ const $ appendOp ")"
