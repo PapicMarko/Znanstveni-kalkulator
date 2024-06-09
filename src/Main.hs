@@ -13,6 +13,7 @@ import Data.Functor.Identity (Identity)
 import MathOperations (add, subtract', multiply, divide, power, square, logarithm, sin', cos', tan', sqrt', pi', absolute)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
+import Data.IORef
 
 void :: Functor f => f a -> f ()
 void = fmap (const ())
@@ -34,43 +35,45 @@ whiteSpace :: Parser ()
 whiteSpace = Token.whiteSpace lexer
 
 -- Define the expression parser
-exprParser :: Parser Double
-exprParser = buildExpressionParser table factor
+exprParser :: Double -> Parser Double
+exprParser ans = buildExpressionParser (table ans) (factor ans)
 
-table :: [[Operator String () Identity Double]]
-table = [ [Prefix (Token.reservedOp lexer "-" >> return negate)]
-        , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
-           Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
-        , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
-           Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
-        , [Infix  (Token.reservedOp lexer "**" >> return power) AssocLeft]
-        ]
+table :: Double -> [[Operator String () Identity Double]]
+table _ = [ [Prefix (Token.reservedOp lexer "-" >> return negate)]
+          , [Infix  (Token.reservedOp lexer "**" >> return power) AssocRight]
+          , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
+             Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
+          , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
+             Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
+          ]
 
-factor :: Parser Double
-factor = try float
-     <|> (fromInteger <$> integer)
-     <|> parens exprParser
-     <|> (Token.reservedOp lexer "sqrt" >> (either (const 0) id . sqrt' <$> parens exprParser))
-     <|> (Token.reservedOp lexer "log" >> (parens exprParser >>= \x -> return (logBase 10 x)))
-     <|> (Token.reservedOp lexer "log" >> do { base <- factor; whiteSpace; x <- factor; return (either (const 0) id (logarithm base x)) })
-     <|> (Token.reservedOp lexer "sin" >> sin' <$> parens exprParser)
-     <|> (Token.reservedOp lexer "cos" >> cos' <$> parens exprParser)
-     <|> (Token.reservedOp lexer "tan" >> tan' <$> parens exprParser)
-     <|> (Token.reservedOp lexer "abs" >> absolute <$> parens exprParser)
-     <|> (Token.reservedOp lexer "square" >> square <$> parens exprParser)
-     <|> (Token.reserved lexer "pi" >> return pi')
+factor :: Double -> Parser Double
+factor ans = try float
+         <|> (fromInteger <$> integer)
+         <|> parens (exprParser ans)
+         <|> (Token.reservedOp lexer "sqrt" >> (either (const 0) id . sqrt' <$> parens (exprParser ans)))
+         <|> (Token.reservedOp lexer "log" >> (parens (exprParser ans) >>= \x -> return (logBase 10 x)))
+         <|> (Token.reservedOp lexer "log" >> do { base <- factor ans; whiteSpace; x <- factor ans; return (either (const 0) id (logarithm base x)) })
+         <|> (Token.reservedOp lexer "sin" >> sin' <$> parens (exprParser ans))
+         <|> (Token.reservedOp lexer "cos" >> cos' <$> parens (exprParser ans))
+         <|> (Token.reservedOp lexer "tan" >> tan' <$> parens (exprParser ans))
+         <|> (Token.reservedOp lexer "abs" >> absolute <$> parens (exprParser ans))
+         <|> (Token.reservedOp lexer "square" >> square <$> parens (exprParser ans))
+         <|> (Token.reserved lexer "pi" >> return pi')
+         <|> (Token.reserved lexer "ans" >> return ans)
 
 -- Evaluate a mathematical expression from a string
-evaluateExpression :: String -> Either ParseError Double
-evaluateExpression = parse (whiteSpace >> exprParser) ""
+evaluateExpression :: Double -> String -> Either ParseError Double
+evaluateExpression ans = parse (whiteSpace >> exprParser ans) ""
 
 main :: IO ()
 main = do
     static <- loadStatic
-    startGUI defaultConfig { jsPort = Just 8023, jsStatic = Just static } setup
+    ansRef <- newIORef 0.0
+    startGUI defaultConfig { jsPort = Just 8023, jsStatic = Just static } (setup ansRef)
 
-setup :: Window -> UI ()
-setup window = do
+setup :: IORef Double -> Window -> UI ()
+setup ansRef window = do
     _ <- return window # set UI.title "Znanstveni kalkulator"
 
     -- Add CSS styles directly in the HTML
@@ -157,6 +160,7 @@ setup window = do
     input <- UI.textarea #. "input" # set (attr "placeholder") "Unesite izraz"
     resultLabel <- UI.span #. "result" # set text "Rezultat će biti prikazan ovdje"
     calculateButton <- UI.button #. "button" # set text "="
+    acButton <- UI.button #. "button" # set text "AC"
 
     -- Operator buttons
     addButton <- UI.button #. "button-op" # set text "+"
@@ -172,6 +176,7 @@ setup window = do
     squareButton <- UI.button #. "button-op" # set text "x²"
     absButton <- UI.button #. "button-op" # set text "|x|"
     piButton <- UI.button #. "button-op" # set text "π"
+    ansButton <- UI.button #. "button-op" # set text "ans"
     lparenButton <- UI.button #. "button-op" # set text "("
     rparenButton <- UI.button #. "button-op" # set text ")"
 
@@ -200,9 +205,10 @@ setup window = do
                 , element zeroButton, element dotButton, element lparenButton, element rparenButton
                 , element logButton, element sqrtButton, element sinButton, element cosButton
                 , element tanButton, element powerButton, element divButton
-                , element absButton, element squareButton, element piButton
+                , element absButton, element squareButton, element piButton, element ansButton
                 ]
             , element calculateButton
+            , element acButton
             , element resultLabel
             ]
         ]
@@ -227,6 +233,10 @@ setup window = do
     let appendPi = do
             current <- get value input
             void $ element input # set value (current ++ "pi")
+
+    let appendAns = do
+            current <- get value input
+            void $ element input # set value (current ++ "ans")
 
     on UI.click oneButton $ \_ -> appendNum "1"
     on UI.click twoButton $ \_ -> appendNum "2"
@@ -261,16 +271,25 @@ setup window = do
         void $ element input # set value ("abs(" ++ current ++ ")")
 
     on UI.click piButton $ const appendPi
+    on UI.click ansButton $ const appendAns
     on UI.click lparenButton $ const $ appendOp "("
     on UI.click rparenButton $ const $ appendOp ")"
 
     -- Set button click event for calculate
     on UI.click calculateButton $ \_ -> do
         inputExpr <- get value input
-        let result = evaluateExpression inputExpr
+        ans <- liftIO $ readIORef ansRef
+        let result = evaluateExpression ans inputExpr
         case result of
             Left err -> void $ element resultLabel # set text ("Greška: " ++ show err)
-            Right val -> void $ element resultLabel # set text ("Rezultat: " ++ show val)
+            Right val -> do
+                void $ element resultLabel # set text ("Rezultat: " ++ show val)
+                liftIO $ writeIORef ansRef val
+
+    -- Set button click event for AC (clear all input)
+    on UI.click acButton $ \_ -> do
+        void $ element input # set value ""
+        void $ element resultLabel # set text "Rezultat će biti prikazan ovdje"
 
 loadStatic :: IO FilePath
 loadStatic = do
