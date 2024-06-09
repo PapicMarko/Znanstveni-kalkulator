@@ -103,14 +103,14 @@ setup window = do
             , "    resize: none;"
             , "}"
             , ".button-container {"
-            , "    display: flex;"
-            , "    flex-wrap: wrap;"
-            , "    justify-content: space-around;"
+            , "    display: grid;"
+            , "    grid-template-columns: repeat(4, 1fr);"
+            , "    gap: 10px;"
             , "    width: 100%;"
             , "    margin-bottom: 20px;"
             , "}"
-            , ".button, .button-op {"
-            , "    width: 70px;"
+            , ".button, .button-op, .button-num {"
+            , "    width: 100%;"
             , "    padding: 10px;"
             , "    background-color: #007bff;"
             , "    color: white;"
@@ -119,9 +119,8 @@ setup window = do
             , "    cursor: pointer;"
             , "    font-size: 16px;"
             , "    text-align: center;"
-            , "    margin: 5px;"
             , "}"
-            , ".button:hover, .button-op:hover {"
+            , ".button:hover, .button-op:hover, .button-num:hover {"
             , "    background-color: #0056b3;"
             , "}"
             , ".result {"
@@ -147,6 +146,25 @@ setup window = do
     divButton <- UI.button #. "button-op" # set text "/"
     logButton <- UI.button #. "button-op" # set text "log"
     sqrtButton <- UI.button #. "button-op" # set text "√"
+    sinButton <- UI.button #. "button-op" # set text "sin"
+    cosButton <- UI.button #. "button-op" # set text "cos"
+    tanButton <- UI.button #. "button-op" # set text "tan"
+    powerButton <- UI.button #. "button-op" # set text "**"
+    lparenButton <- UI.button #. "button-op" # set text "("
+    rparenButton <- UI.button #. "button-op" # set text ")"
+
+    -- Number buttons
+    oneButton <- UI.button #. "button-num" # set UI.text "1"
+    twoButton <- UI.button #. "button-num" # set UI.text "2"
+    threeButton <- UI.button #. "button-num" # set UI.text "3"
+    fourButton <- UI.button #. "button-num" # set UI.text "4"
+    fiveButton <- UI.button #. "button-num" # set UI.text "5"
+    sixButton <- UI.button #. "button-num" # set UI.text "6"
+    sevenButton <- UI.button #. "button-num" # set UI.text "7"
+    eightButton <- UI.button #. "button-num" # set UI.text "8"
+    nineButton <- UI.button #. "button-num" # set UI.text "9"
+    zeroButton <- UI.button #. "button-num" # set UI.text "0"
+    dotButton <- UI.button #. "button-num" # set UI.text "."
 
     -- Arrange elements in the window
     void $ getBody window #+
@@ -154,22 +172,38 @@ setup window = do
         , UI.div #. "container" #+
             [ element input
             , UI.div #. "button-container" #+
-                [ element addButton
-                , element subButton
-                , element mulButton
-                , element divButton
-                , element logButton
-                , element sqrtButton
+                [ element oneButton, element twoButton, element threeButton, element addButton
+                , element fourButton, element fiveButton, element sixButton, element subButton
+                , element sevenButton, element eightButton, element nineButton, element mulButton
+                , element zeroButton, element dotButton, element lparenButton, element rparenButton
+                , element logButton, element sqrtButton, element sinButton, element cosButton
+                , element tanButton, element powerButton, element divButton
                 ]
             , element calculateButton
             , element resultLabel
             ]
         ]
 
-    -- Set button click events for operators
+    -- Set button click events for operators and numbers
     let appendOp op = do
             current <- get value input
             void $ element input # set value (current ++ op)
+
+    let appendNum num = do
+            current <- get value input
+            void $ element input # set value (current ++ num)
+
+    on UI.click oneButton $ \_ -> appendNum "1"
+    on UI.click twoButton $ \_ -> appendNum "2"
+    on UI.click threeButton $ \_ -> appendNum "3"
+    on UI.click fourButton $ \_ -> appendNum "4"
+    on UI.click fiveButton $ \_ -> appendNum "5"
+    on UI.click sixButton $ \_ -> appendNum "6"
+    on UI.click sevenButton $ \_ -> appendNum "7"
+    on UI.click eightButton $ \_ -> appendNum "8"
+    on UI.click nineButton $ \_ -> appendNum "9"
+    on UI.click zeroButton $ \_ -> appendNum "0"
+    on UI.click dotButton $ \_ -> appendNum "."
 
     on UI.click addButton $ const $ appendOp "+"
     on UI.click subButton $ const $ appendOp "-"
@@ -177,6 +211,12 @@ setup window = do
     on UI.click divButton $ const $ appendOp "/"
     on UI.click logButton $ const $ appendOp "log"
     on UI.click sqrtButton $ const $ appendOp "sqrt"
+    on UI.click sinButton $ const $ appendOp "sin"
+    on UI.click cosButton $ const $ appendOp "cos"
+    on UI.click tanButton $ const $ appendOp "tan"
+    on UI.click powerButton $ const $ appendOp "**"
+    on UI.click lparenButton $ const $ appendOp "("
+    on UI.click rparenButton $ const $ appendOp ")"
 
     -- Set button click event for calculate
     on UI.click calculateButton $ \_ -> do
@@ -226,14 +266,14 @@ loadStatic = do
             , "    resize: none;"
             , "}"
             , ".button-container {"
-            , "    display: flex;"
-            , "    flex-wrap: wrap;"
-            , "    justify-content: space-around;"
+            , "    display: grid;"
+            , "    grid-template-columns: repeat(4, 1fr);"
+            , "    gap: 10px;"
             , "    width: 100%;"
             , "    margin-bottom: 20px;"
             , "}"
-            , ".button, .button-op {"
-            , "    width: 70px;"
+            , ".button, .button-op, .button-num {"
+            , "    width: 100%;"
             , "    padding: 10px;"
             , "    background-color: #007bff;"
             , "    color: white;"
@@ -242,9 +282,8 @@ loadStatic = do
             , "    cursor: pointer;"
             , "    font-size: 16px;"
             , "    text-align: center;"
-            , "    margin: 5px;"
             , "}"
-            , ".button:hover, .button-op:hover {"
+            , ".button:hover, .button-op:hover, .button-num:hover {"
             , "    background-color: #0056b3;"
             , "}"
             , ".result {"
