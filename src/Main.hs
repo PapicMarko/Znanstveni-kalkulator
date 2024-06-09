@@ -10,7 +10,7 @@ import Text.Parsec.Expr
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Token
 import Data.Functor.Identity (Identity)
-import MathOperations (add, subtract', multiply, divide, power, logarithm, sin', cos', tan', sqrt')
+import MathOperations (add, subtract', multiply, divide, power, square, logarithm, sin', cos', tan', sqrt', pi', absolute)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
 
@@ -56,6 +56,9 @@ factor = try float
      <|> (Token.reservedOp lexer "sin" >> sin' <$> parens exprParser)
      <|> (Token.reservedOp lexer "cos" >> cos' <$> parens exprParser)
      <|> (Token.reservedOp lexer "tan" >> tan' <$> parens exprParser)
+     <|> (Token.reservedOp lexer "abs" >> absolute <$> parens exprParser)
+     <|> (Token.reservedOp lexer "square" >> square <$> parens exprParser)
+     <|> (Token.reserved lexer "pi" >> return pi')
 
 -- Evaluate a mathematical expression from a string
 evaluateExpression :: String -> Either ParseError Double
@@ -124,6 +127,21 @@ setup window = do
             , ".button:hover, .button-op:hover, .button-num:hover {"
             , "    background-color: #0056b3;"
             , "}"
+            , ".button-power {"
+            , "    width: 100%;"
+            , "    padding: 10px;"
+            , "    background-color: #007bff;"
+            , "    color: white;"
+            , "    border: none;"
+            , "    border-radius: 5px;"
+            , "    cursor: pointer;"
+            , "    font-size: 16px;"
+            , "    text-align: center;"
+            , "    font-family: Arial, sans-serif;"
+            , "}"
+            , ".button:hover, .button-op:hover, .button-num:hover, .button-power:hover {"
+            , "    background-color: #0056b3;"
+            , "}"
             , ".result {"
             , "    font-size: 20px;"
             , "    font-weight: bold;"
@@ -150,7 +168,10 @@ setup window = do
     sinButton <- UI.button #. "button-op" # set text "sin"
     cosButton <- UI.button #. "button-op" # set text "cos"
     tanButton <- UI.button #. "button-op" # set text "tan"
-    powerButton <- UI.button #. "button-op" # set text "**"
+    powerButton <- UI.button #. "button-power" # set html "<span>x<sup>y</sup></span>"
+    squareButton <- UI.button #. "button-op" # set text "x²"
+    absButton <- UI.button #. "button-op" # set text "|x|"
+    piButton <- UI.button #. "button-op" # set text "π"
     lparenButton <- UI.button #. "button-op" # set text "("
     rparenButton <- UI.button #. "button-op" # set text ")"
 
@@ -179,6 +200,7 @@ setup window = do
                 , element zeroButton, element dotButton, element lparenButton, element rparenButton
                 , element logButton, element sqrtButton, element sinButton, element cosButton
                 , element tanButton, element powerButton, element divButton
+                , element absButton, element squareButton, element piButton
                 ]
             , element calculateButton
             , element resultLabel
@@ -202,6 +224,10 @@ setup window = do
             current <- get value input
             void $ element input # set value (current ++ "log() ")
 
+    let appendPi = do
+            current <- get value input
+            void $ element input # set value (current ++ "pi")
+
     on UI.click oneButton $ \_ -> appendNum "1"
     on UI.click twoButton $ \_ -> appendNum "2"
     on UI.click threeButton $ \_ -> appendNum "3"
@@ -224,6 +250,17 @@ setup window = do
     on UI.click cosButton $ const $ appendFunc "cos"
     on UI.click tanButton $ const $ appendFunc "tan"
     on UI.click powerButton $ const $ appendOp "**"
+    
+    -- Update for square and absolute buttons
+    on UI.click squareButton $ \_ -> do
+        current <- get value input
+        void $ element input # set value (current ++ "**2")
+
+    on UI.click absButton $ \_ -> do
+        current <- get value input
+        void $ element input # set value ("abs(" ++ current ++ ")")
+
+    on UI.click piButton $ const appendPi
     on UI.click lparenButton $ const $ appendOp "("
     on UI.click rparenButton $ const $ appendOp ")"
 
@@ -293,6 +330,21 @@ loadStatic = do
             , "    text-align: center;"
             , "}"
             , ".button:hover, .button-op:hover, .button-num:hover {"
+            , "    background-color: #0056b3;"
+            , "}"
+            , ".button-power {"
+            , "    width: 100%;"
+            , "    padding: 10px;"
+            , "    background-color: #007bff;"
+            , "    color: white;"
+            , "    border: none;"
+            , "    border-radius: 5px;"
+            , "    cursor: pointer;"
+            , "    font-size: 16px;"
+            , "    text-align: center;"
+            , "    font-family: Arial, sans-serif;"
+            , "}"
+            , ".button:hover, .button-op:hover, .button-num:hover, .button-power:hover {"
             , "    background-color: #0056b3;"
             , "}"
             , ".result {"

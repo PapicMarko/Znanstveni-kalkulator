@@ -24,6 +24,10 @@ divide :: Double -> Double -> Either String Double
 divide _ 0 = Left "Cannot divide by zero"
 divide x y = Right (x / y)
 
+-- Kvadriranje
+square :: Double -> Double
+square x = x ** 2
+
 -- Potenciranje
 power :: Double -> Double -> Double
 power x y = x ** y
@@ -52,6 +56,14 @@ sqrt' :: Double -> Either String Double
 sqrt' x
   | x < 0 = Left "Square root undefined for negative numbers"
   | otherwise = Right (sqrt x)
+
+-- Pi
+pi' :: Double
+pi' = pi
+
+-- Apsolutna vrijednost
+absolute :: Double -> Double
+absolute = abs
 
 -- Parsiranje izraza
 
