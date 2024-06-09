@@ -20,6 +20,6 @@ executable Znanstveni-kalkulator
   main-is:            Main.hs
   other-modules:      MathOperations
   -- other-extensions:
-  build-depends:      base >=4.17.2.1, threepenny-gui, text, directory, filepath
+  build-depends:      base >=4.17.2.1, threepenny-gui, text, directory, filepath, parsec
   hs-source-dirs:     src
   default-language:   Haskell2010

@@ -4,15 +4,66 @@ module Main where
 
 import Graphics.UI.Threepenny.Core
 import qualified Graphics.UI.Threepenny as UI
+import Text.Parsec hiding ((<|>))
+import Text.Parsec.String (Parser)
+import Text.Parsec.Expr
+import Text.Parsec.Language (emptyDef)
+import qualified Text.Parsec.Token as Token
+import Data.Functor.Identity (Identity)
 import MathOperations (add, subtract', multiply, divide, power, logarithm, sin', cos', tan', sqrt')
-import Text.Read (readMaybe)
+import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
+import System.FilePath ((</>))
 
 void :: Functor f => f a -> f ()
 void = fmap (const ())
 
+-- Define the lexer
+lexer :: Token.TokenParser ()
+lexer = Token.makeTokenParser emptyDef
+
+parens :: Parser a -> Parser a
+parens = Token.parens lexer
+
+integer :: Parser Integer
+integer = Token.integer lexer
+
+float :: Parser Double
+float = Token.float lexer
+
+whiteSpace :: Parser ()
+whiteSpace = Token.whiteSpace lexer
+
+-- Define the expression parser
+exprParser :: Parser Double
+exprParser = buildExpressionParser table factor
+
+table :: [[Operator String () Identity Double]]
+table = [ [Prefix (Token.reservedOp lexer "-" >> return negate)]
+        , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
+           Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
+        , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
+           Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
+        , [Infix  (Token.reservedOp lexer "**" >> return power) AssocLeft]
+        ]
+
+factor :: Parser Double
+factor = try float
+     <|> (fromInteger <$> integer)
+     <|> parens exprParser
+     <|> (Token.reservedOp lexer "sqrt" >> (either (const 0) id . sqrt' <$> parens exprParser))
+     <|> (Token.reservedOp lexer "log" >> do { base <- factor; x <- factor; return (either (const 0) id (logarithm base x)) })
+     <|> (Token.reservedOp lexer "sin" >> sin' <$> parens exprParser)
+     <|> (Token.reservedOp lexer "cos" >> cos' <$> parens exprParser)
+     <|> (Token.reservedOp lexer "tan" >> tan' <$> parens exprParser)
+
+-- Evaluate a mathematical expression from a string
+evaluateExpression :: String -> Either ParseError Double
+evaluateExpression = parse (whiteSpace >> exprParser) ""
+
 main :: IO ()
 main = do
-    startGUI defaultConfig { jsPort = Just 8023 } setup
+    static <- loadStatic
+    startGUI defaultConfig { jsPort = Just 8023, jsStatic = Just static } setup
 
 setup :: Window -> UI ()
 setup window = do
@@ -35,26 +86,31 @@ setup window = do
             , "    padding: 20px;"
             , "    border-radius: 10px;"
             , "    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);"
-            , "    max-width: 400px;"
+            , "    max-width: 500px;"
             , "    width: 100%;"
+            , "    display: flex;"
+            , "    flex-direction: column;"
+            , "    align-items: center;"
             , "}"
             , ".input {"
-            , "    width: calc(50% - 10px);"
+            , "    width: 100%;"
             , "    padding: 10px;"
-            , "    margin-bottom: 10px;"
+            , "    margin-bottom: 20px;"
             , "    border: 1px solid #ccc;"
             , "    border-radius: 5px;"
             , "    font-size: 16px;"
+            , "    height: 50px;"
+            , "    resize: none;"
             , "}"
             , ".button-container {"
             , "    display: flex;"
             , "    flex-wrap: wrap;"
-            , "    justify-content: space-between;"
-            , "    margin-bottom: 10px;"
+            , "    justify-content: space-around;"
+            , "    width: 100%;"
+            , "    margin-bottom: 20px;"
             , "}"
-            , ".button {"
-            , "    flex: 1 1 calc(33.333% - 10px);"
-            , "    margin: 5px;"
+            , ".button, .button-op {"
+            , "    width: 70px;"
             , "    padding: 10px;"
             , "    background-color: #007bff;"
             , "    color: white;"
@@ -63,115 +119,140 @@ setup window = do
             , "    cursor: pointer;"
             , "    font-size: 16px;"
             , "    text-align: center;"
+            , "    margin: 5px;"
             , "}"
-            , ".button:hover {"
+            , ".button:hover, .button-op:hover {"
             , "    background-color: #0056b3;"
             , "}"
             , ".result {"
-            , "    font-size: 18px;"
+            , "    font-size: 20px;"
             , "    font-weight: bold;"
-            , "    margin-top: 10px;"
+            , "    margin-top: 20px;"
             , "    text-align: center;"
             , "}"
             ]
 
-    -- GUI elements
-    input1 <- UI.input #. "input" # set (attr "placeholder") "Unesite prvi broj"
-    input2 <- UI.input #. "input" # set (attr "placeholder") "Unesite drugi broj"
-    resultLabel <- UI.span #. "result" # set text "Rezultat će biti prikazan ovdje"
-
-    addButton <- UI.button #. "button" # set text "Zbroji"
-    subButton <- UI.button #. "button" # set text "Oduzmi"
-    mulButton <- UI.button #. "button" # set text "Pomnoži"
-    divButton <- UI.button #. "button" # set text "Podijeli"
-    powButton <- UI.button #. "button" # set text "Potencija"
-    logButton <- UI.button #. "button" # set text "Logaritam"
-    sinButton <- UI.button #. "button" # set text "Sin"
-    cosButton <- UI.button #. "button" # set text "Cos"
-    tanButton <- UI.button #. "button" # set text "Tan"
-    sqrtButton <- UI.button #. "button" # set text "Korijen"
-
     -- Create style element
     styleElement <- UI.mkElement "style" # set text css
+
+    -- GUI elements
+    input <- UI.textarea #. "input" # set (attr "placeholder") "Unesite izraz"
+    resultLabel <- UI.span #. "result" # set text "Rezultat će biti prikazan ovdje"
+    calculateButton <- UI.button #. "button" # set text "Izračunaj"
+
+    -- Operator buttons
+    addButton <- UI.button #. "button-op" # set text "+"
+    subButton <- UI.button #. "button-op" # set text "-"
+    mulButton <- UI.button #. "button-op" # set text "*"
+    divButton <- UI.button #. "button-op" # set text "/"
+    logButton <- UI.button #. "button-op" # set text "log"
+    sqrtButton <- UI.button #. "button-op" # set text "√"
 
     -- Arrange elements in the window
     void $ getBody window #+
         [ element styleElement
         , UI.div #. "container" #+
-            [ element input1
-            , element input2
-            , UI.div #. "button-container" #+ [element addButton, element subButton, element mulButton, element divButton, element powButton, element logButton, element sinButton, element cosButton, element tanButton, element sqrtButton]
+            [ element input
+            , UI.div #. "button-container" #+
+                [ element addButton
+                , element subButton
+                , element mulButton
+                , element divButton
+                , element logButton
+                , element sqrtButton
+                ]
+            , element calculateButton
             , element resultLabel
             ]
         ]
 
-    -- Hide the second input initially
-    _ <- element input2 # set UI.style [("display", "none")]
+    -- Set button click events for operators
+    let appendOp op = do
+            current <- get value input
+            void $ element input # set value (current ++ op)
 
-    -- Set button click events
-    on UI.click addButton $ \_ -> performDoubleInputOperation input1 input2 resultLabel add
-    on UI.click subButton $ \_ -> performDoubleInputOperation input1 input2 resultLabel subtract'
-    on UI.click mulButton $ \_ -> performDoubleInputOperation input1 input2 resultLabel multiply
-    on UI.click divButton $ \_ -> performDoubleInputOperationSafe input1 input2 resultLabel divide
-    on UI.click powButton $ \_ -> performDoubleInputOperation input1 input2 resultLabel power
-    on UI.click logButton $ \_ -> performDoubleInputOperationSafe input1 input2 resultLabel logarithm
-    on UI.click sinButton $ \_ -> performSingleInputOperation input1 resultLabel sin'
-    on UI.click cosButton $ \_ -> performSingleInputOperation input1 resultLabel cos'
-    on UI.click tanButton $ \_ -> performSingleInputOperation input1 resultLabel tan'
-    on UI.click sqrtButton $ \_ -> performSingleInputOperationSafe input1 resultLabel sqrt'
+    on UI.click addButton $ const $ appendOp "+"
+    on UI.click subButton $ const $ appendOp "-"
+    on UI.click mulButton $ const $ appendOp "*"
+    on UI.click divButton $ const $ appendOp "/"
+    on UI.click logButton $ const $ appendOp "log"
+    on UI.click sqrtButton $ const $ appendOp "sqrt"
 
-    -- Show or hide the second input based on the button clicked
-    let doubleInputButtons = [addButton, subButton, mulButton, divButton, powButton, logButton]
-        singleInputButtons = [sinButton, cosButton, tanButton, sqrtButton]
-    
-    mapM_ (\btn -> on UI.click btn $ \_ -> element input2 # set UI.style [("display", "inline-block")]) doubleInputButtons
-    mapM_ (\btn -> on UI.click btn $ \_ -> element input2 # set UI.style [("display", "none")]) singleInputButtons
+    -- Set button click event for calculate
+    on UI.click calculateButton $ \_ -> do
+        inputExpr <- get value input
+        let result = evaluateExpression inputExpr
+        case result of
+            Left err -> void $ element resultLabel # set text ("Greška: " ++ show err)
+            Right val -> void $ element resultLabel # set text ("Rezultat: " ++ show val)
 
--- Function for double-argument operations that do not return an error
-performDoubleInputOperation :: Element -> Element -> Element -> (Double -> Double -> Double) -> UI ()
-performDoubleInputOperation input1 input2 resultLabel op = do
-    mval1 <- get value input1
-    mval2 <- get value input2
-    let maybeX = readMaybe mval1 :: Maybe Double
-        maybeY = readMaybe mval2 :: Maybe Double
-    case (maybeX, maybeY) of
-        (Just x, Just y) -> void $ element resultLabel # set text ("Rezultat: " ++ show (op x y))
-        _ -> return () -- Do nothing if the input is invalid
-
--- Function for double-argument operations that can return an error
-performDoubleInputOperationSafe :: Element -> Element -> Element -> (Double -> Double -> Either String Double) -> UI ()
-performDoubleInputOperationSafe input1 input2 resultLabel op = do
-    mval1 <- get value input1
-    mval2 <- get value input2
-    let maybeX = readMaybe mval1 :: Maybe Double
-        maybeY = readMaybe mval2 :: Maybe Double
-    case (maybeX, maybeY) of
-        (Just x, Just y) -> 
-            case op x y of
-                Right result -> void $ element resultLabel # set text ("Rezultat: " ++ show result)
-                Left err -> void $ element resultLabel # set text ("Greška: " ++ err)
-        _ -> return () -- Do nothing if the input is invalid
-
-
--- Function for single-argument operations that do not return an error
-performSingleInputOperation :: Element -> Element -> (Double -> Double) -> UI ()
-performSingleInputOperation input resultLabel op = do
-    mval <- get value input
-    let maybeX = readMaybe mval :: Maybe Double
-    case maybeX of
-        Just x -> void $ element resultLabel # set text ("Rezultat: " ++ show (op x))
-        _ -> return () -- Do nothing if the input is invalid
-
--- Function for single-argument operations that can return an error
-performSingleInputOperationSafe :: Element -> Element -> (Double -> Either String Double) -> UI ()
-performSingleInputOperationSafe input resultLabel op = do
-    mval <- get value input
-    let maybeX = readMaybe mval :: Maybe Double
-    case maybeX of
-        Just x -> 
-            case op x of
-                Right result -> void $ element resultLabel # set text ("Rezultat: " ++ show result)
-                Left err -> void $ element resultLabel # set text ("Greška: " ++ err)
-        _ -> return () -- Do nothing if the input is invalid
-
-
+loadStatic :: IO FilePath
+loadStatic = do
+    -- Create a temporary directory for static files
+    dir <- getTemporaryDirectory
+    let staticDir = dir </> "static"
+    createDirectoryIfMissing True staticDir
+    -- Write CSS content to a file in the static directory
+    let cssContent = unlines
+            [ "body {"
+            , "    font-family: Arial, sans-serif;"
+            , "    background-color: #f2f2f2;"
+            , "    color: #333;"
+            , "    display: flex;"
+            , "    justify-content: center;"
+            , "    align-items: center;"
+            , "    height: 100vh;"
+            , "    margin: 0;"
+            , "}"
+            , ".container {"
+            , "    background-color: #fff;"
+            , "    padding: 20px;"
+            , "    border-radius: 10px;"
+            , "    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);"
+            , "    max-width: 500px;"
+            , "    width: 100%;"
+            , "    display: flex;"
+            , "    flex-direction: column;"
+            , "    align-items: center;"
+            , "}"
+            , ".input {"
+            , "    width: 100%;"
+            , "    padding: 10px;"
+            , "    margin-bottom: 20px;"
+            , "    border: 1px solid #ccc;"
+            , "    border-radius: 5px;"
+            , "    font-size: 16px;"
+            , "    height: 50px;"
+            , "    resize: none;"
+            , "}"
+            , ".button-container {"
+            , "    display: flex;"
+            , "    flex-wrap: wrap;"
+            , "    justify-content: space-around;"
+            , "    width: 100%;"
+            , "    margin-bottom: 20px;"
+            , "}"
+            , ".button, .button-op {"
+            , "    width: 70px;"
+            , "    padding: 10px;"
+            , "    background-color: #007bff;"
+            , "    color: white;"
+            , "    border: none;"
+            , "    border-radius: 5px;"
+            , "    cursor: pointer;"
+            , "    font-size: 16px;"
+            , "    text-align: center;"
+            , "    margin: 5px;"
+            , "}"
+            , ".button:hover, .button-op:hover {"
+            , "    background-color: #0056b3;"
+            , "}"
+            , ".result {"
+            , "    font-size: 20px;"
+            , "    font-weight: bold;"
+            , "    margin-top: 20px;"
+            , "    text-align: center;"
+            , "}"
+            ]
+    writeFile (staticDir </> "style.css") cssContent
+    return staticDir

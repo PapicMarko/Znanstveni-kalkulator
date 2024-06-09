@@ -40,6 +40,16 @@
   (major1) == 1 && (major2) <  4 || \
   (major1) == 1 && (major2) == 4 && (minor) <= 100)
 #endif /* MIN_VERSION_filepath */
+/* package parsec-3.1.17.0 */
+#ifndef VERSION_parsec
+#define VERSION_parsec "3.1.17.0"
+#endif /* VERSION_parsec */
+#ifndef MIN_VERSION_parsec
+#define MIN_VERSION_parsec(major1,major2,minor) (\
+  (major1) <  3 || \
+  (major1) == 3 && (major2) <  1 || \
+  (major1) == 3 && (major2) == 1 && (minor) <= 17)
+#endif /* MIN_VERSION_parsec */
 /* package text-2.1 */
 #ifndef VERSION_text
 #define VERSION_text "2.1"
