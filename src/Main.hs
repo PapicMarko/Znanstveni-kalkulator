@@ -40,13 +40,12 @@ exprParser ans = buildExpressionParser (table ans) (factor ans)
 
 table :: Double -> [[Operator String () Identity Double]]
 table _ = [ [Prefix (Token.reservedOp lexer "-" >> return negate)]
-          , [Infix  (Token.reservedOp lexer "**" >> return power) AssocRight]
-          , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
-             Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
-          , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
-             Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
-          ]
-
+            , [Infix  (Token.reservedOp lexer "**" >> return power) AssocRight]
+            , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
+               Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
+            , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
+               Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
+            ]
 
 factor :: Double -> Parser Double
 factor ans = try float
@@ -66,6 +65,11 @@ factor ans = try float
 -- Evaluate a mathematical expression from a string
 evaluateExpression :: Double -> String -> Either ParseError Double
 evaluateExpression ans = parse (whiteSpace >> exprParser ans) ""
+
+-- Function to set cursor position in the input field
+setCursorPosition :: Int -> UI ()
+setCursorPosition pos = runFunction $ ffi $
+    "document.getElementsByClassName('input')[0].setSelectionRange(" ++ show pos ++ ", " ++ show pos ++ ");"
 
 main :: IO ()
 main = do
@@ -128,7 +132,7 @@ setup ansRef window = do
             , ".button, .button-op, .button-num {"
             , "    width: 100%;"
             , "    padding: 10px;"
-            , "    background-color: #CCCCCC;"
+            , "    background-color: ##CCCCCC;"
             , "    color: black;"
             , "    border: none;"
             , "    border-radius: 5px;"
@@ -142,7 +146,7 @@ setup ansRef window = do
             , ".button-power {"
             , "    width: 100%;"
             , "    padding: 10px;"
-            , "    background-color: #CCCCCC;"
+            , "    background-color: ##CCCCCC;"
             , "    color: black;"
             , "    border: none;"
             , "    border-radius: 5px;"
@@ -248,11 +252,15 @@ setup ansRef window = do
 
     let appendFunc func = do
             current <- get value input
-            void $ element input # set value (current ++ func ++ "()")
+            let newVal = current ++ func ++ "("
+            void $ element input # set value newVal
+            setCursorPosition (length newVal)
 
     let appendLog = do
             current <- get value input
-            void $ element input # set value (current ++ "log() ")
+            let newVal = current ++ "log("
+            void $ element input # set value newVal
+            setCursorPosition (length newVal)
 
     let appendPi = do
             current <- get value input
@@ -261,10 +269,6 @@ setup ansRef window = do
     let appendAns = do
             current <- get value input
             void $ element input # set value (current ++ "ans")
-
-    let clearInput = do
-            void $ element input # set value ""
-            void $ element resultLabel # set text "Rezultat će biti prikazan ovdje"
 
     on UI.click oneButton $ \_ -> appendNum "1"
     on UI.click twoButton $ \_ -> appendNum "2"
@@ -288,7 +292,7 @@ setup ansRef window = do
     on UI.click cosButton $ const $ appendFunc "cos"
     on UI.click tanButton $ const $ appendFunc "tan"
     on UI.click powerButton $ const $ appendOp "**"
-    
+
     -- Update for square and absolute buttons
     on UI.click squareButton $ \_ -> do
         current <- get value input
@@ -300,9 +304,12 @@ setup ansRef window = do
 
     on UI.click piButton $ const appendPi
     on UI.click ansButton $ const appendAns
-    on UI.click acButton $ const clearInput
     on UI.click lparenButton $ const $ appendOp "("
     on UI.click rparenButton $ const $ appendOp ")"
+    on UI.click acButton $ \_ -> do
+        void $ element input # set value ""
+        void $ element resultLabel # set text "Rezultat će biti prikazan ovdje"
+        liftIO $ writeIORef ansRef 0.0
 
     -- Set button click event for calculate
     on UI.click calculateButton $ \_ -> do
