@@ -264,6 +264,7 @@ setup ansRef window = do
 
     let clearInput = do
             void $ element input # set value ""
+            void $ element resultLabel # set text "Rezultat će biti prikazan ovdje"
 
     on UI.click oneButton $ \_ -> appendNum "1"
     on UI.click twoButton $ \_ -> appendNum "2"
