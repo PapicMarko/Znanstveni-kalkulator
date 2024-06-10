@@ -39,13 +39,14 @@ exprParser :: Double -> Parser Double
 exprParser ans = buildExpressionParser (table ans) (factor ans)
 
 table :: Double -> [[Operator String () Identity Double]]
-table ans = [ [Prefix (Token.reservedOp lexer "-" >> return negate)]
-            , [Infix  (Token.reservedOp lexer "**" >> return power) AssocRight]
-            , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
-               Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
-            , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
-               Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
-            ]
+table _ = [ [Prefix (Token.reservedOp lexer "-" >> return negate)]
+          , [Infix  (Token.reservedOp lexer "**" >> return power) AssocRight]
+          , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
+             Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
+          , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
+             Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
+          ]
+
 
 factor :: Double -> Parser Double
 factor ans = try float
@@ -127,7 +128,7 @@ setup ansRef window = do
             , ".button, .button-op, .button-num {"
             , "    width: 100%;"
             , "    padding: 10px;"
-            , "    background-color: ##CCCCCC;"
+            , "    background-color: #CCCCCC;"
             , "    color: black;"
             , "    border: none;"
             , "    border-radius: 5px;"
@@ -141,7 +142,7 @@ setup ansRef window = do
             , ".button-power {"
             , "    width: 100%;"
             , "    padding: 10px;"
-            , "    background-color: ##CCCCCC;"
+            , "    background-color: #CCCCCC;"
             , "    color: black;"
             , "    border: none;"
             , "    border-radius: 5px;"
@@ -156,7 +157,7 @@ setup ansRef window = do
             , ".calculate-button {"
             , "    width: 40%;"
             , "    padding: 10px;"
-            , "    background-color: #28a745;"
+            , "    background-color: #fa0000;"
             , "    color: white;"
             , "    border: none;"
             , "    border-radius: 5px;"
@@ -261,6 +262,9 @@ setup ansRef window = do
             current <- get value input
             void $ element input # set value (current ++ "ans")
 
+    let clearInput = do
+            void $ element input # set value ""
+
     on UI.click oneButton $ \_ -> appendNum "1"
     on UI.click twoButton $ \_ -> appendNum "2"
     on UI.click threeButton $ \_ -> appendNum "3"
@@ -295,9 +299,9 @@ setup ansRef window = do
 
     on UI.click piButton $ const appendPi
     on UI.click ansButton $ const appendAns
+    on UI.click acButton $ const clearInput
     on UI.click lparenButton $ const $ appendOp "("
     on UI.click rparenButton $ const $ appendOp ")"
-    on UI.click acButton $ const $ element input # set value ""
 
     -- Set button click event for calculate
     on UI.click calculateButton $ \_ -> do
@@ -316,100 +320,4 @@ loadStatic = do
     dir <- getTemporaryDirectory
     let staticDir = dir </> "static"
     createDirectoryIfMissing True staticDir
-    -- Write CSS content to a file in the static directory
-    let cssContent = unlines
-            [ "body {"
-            , "    font-family: Arial, sans-serif;"
-            , "    background-color: #f2f2f2;"
-            , "    color: #333;"
-            , "    display: flex;"
-            , "    justify-content: center;"
-            , "    align-items: center;"
-            , "    height: 100vh;"
-            , "    margin: 0;"
-            , "}"
-            , ".container {"
-            , "    background-color: #fff;"
-            , "    padding: 20px;"
-            , "    border-radius: 10px;"
-            , "    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);"
-            , "    max-width: 800px;"
-            , "    width: 100%;"
-            , "    display: flex;"
-            , "    flex-direction: column;"
-            , "    align-items: center;"
-            , "}"
-            , ".input {"
-            , "    width: 100%;"
-            , "    padding: 10px;"
-            , "    margin-bottom: 20px;"
-            , "    border: 1px solid #ccc;"
-            , "    border-radius: 5px;"
-            , "    font-size: 16px;"
-            , "    height: 50px;"
-            , "    resize: none;"
-            , "}"
-            , ".button-container {"
-            , "    display: flex;"
-            , "    width: 100%;"
-            , "    justify-content: space-between;"
-            , "}"
-            , ".functions-container {"
-            , "    display: grid;"
-            , "    grid-template-columns: repeat(3, 1fr);"
-            , "    gap: 10px;"
-            , "}"
-            , ".numbers-container {"
-            , "    display: grid;"
-            , "    grid-template-columns: repeat(4, 1fr);"
-            , "    gap: 10px;"
-            , "}"
-            , ".button, .button-op, .button-num {"
-            , "    width: 100%;"
-            , "    padding: 10px;"
-            , "    background-color: #007bff;"
-            , "    color: white;"
-            , "    border: none;"
-            , "    border-radius: 5px;"
-            , "    cursor: pointer;"
-            , "    font-size: 16px;"
-            , "    text-align: center;"
-            , "}"
-            , ".button:hover, .button-op:hover, .button-num:hover {"
-            , "    background-color: #0056b3;"
-            , "}"
-            , ".button-power {"
-            , "    width: 100%;"
-            , "    padding: 10px;"
-            , "    background-color: #007bff;"
-            , "    color: white;"
-            , "    border: none;"
-            , "    border-radius: 5px;"
-            , "    cursor: pointer;"
-            , "    font-size: 16px;"
-            , "    text-align: center;"
-            , "    font-family: Arial, sans-serif;"
-            , "}"
-            , ".button:hover, .button-op:hover, .button-num:hover, .button-power:hover {"
-            , "    background-color: #0056b3;"
-            , "}"
-            , ".calculate-button {"
-            , "    width: 50%;"
-            , "    padding: 10px;"
-            , "    background-color: #28a745;"
-            , "    color: white;"
-            , "    border: none;"
-            , "    border-radius: 5px;"
-            , "    cursor: pointer;"
-            , "    font-size: 16px;"
-            , "    text-align: center;"
-            , "}"
-            , ".result {"
-            , "    font-size: 20px;"
-            , "    font-weight: bold;"
-            , "    margin-top: 20px;"
-            , "    text-align: center;"
-            , "}"
-            ]
-    writeFile (staticDir </> "style.css") cssContent
     return staticDir
