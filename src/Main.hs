@@ -39,13 +39,13 @@ exprParser :: Double -> Parser Double
 exprParser ans = buildExpressionParser (table ans) (factor ans)
 
 table :: Double -> [[Operator String () Identity Double]]
-table _ = [ [Prefix (Token.reservedOp lexer "-" >> return negate)]
-          , [Infix  (Token.reservedOp lexer "**" >> return power) AssocRight]
-          , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
-             Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
-          , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
-             Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
-          ]
+table ans = [ [Prefix (Token.reservedOp lexer "-" >> return negate)]
+            , [Infix  (Token.reservedOp lexer "**" >> return power) AssocRight]
+            , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
+               Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
+            , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
+               Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
+            ]
 
 factor :: Double -> Parser Double
 factor ans = try float
@@ -93,7 +93,7 @@ setup ansRef window = do
             , "    padding: 20px;"
             , "    border-radius: 10px;"
             , "    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);"
-            , "    max-width: 500px;"
+            , "    max-width: 800px;"
             , "    width: 100%;"
             , "    display: flex;"
             , "    flex-direction: column;"
@@ -110,17 +110,25 @@ setup ansRef window = do
             , "    resize: none;"
             , "}"
             , ".button-container {"
+            , "    display: flex;"
+            , "    width: 100%;"
+            , "    justify-content: space-between;"
+            , "}"
+            , ".functions-container {"
+            , "    display: grid;"
+            , "    grid-template-columns: repeat(3, 1fr);"
+            , "    gap: 10px;"
+            , "}"
+            , ".numbers-container {"
             , "    display: grid;"
             , "    grid-template-columns: repeat(4, 1fr);"
             , "    gap: 10px;"
-            , "    width: 100%;"
-            , "    margin-bottom: 20px;"
             , "}"
             , ".button, .button-op, .button-num {"
             , "    width: 100%;"
             , "    padding: 10px;"
-            , "    background-color: #007bff;"
-            , "    color: white;"
+            , "    background-color: ##CCCCCC;"
+            , "    color: black;"
             , "    border: none;"
             , "    border-radius: 5px;"
             , "    cursor: pointer;"
@@ -133,8 +141,8 @@ setup ansRef window = do
             , ".button-power {"
             , "    width: 100%;"
             , "    padding: 10px;"
-            , "    background-color: #007bff;"
-            , "    color: white;"
+            , "    background-color: ##CCCCCC;"
+            , "    color: black;"
             , "    border: none;"
             , "    border-radius: 5px;"
             , "    cursor: pointer;"
@@ -144,6 +152,17 @@ setup ansRef window = do
             , "}"
             , ".button:hover, .button-op:hover, .button-num:hover, .button-power:hover {"
             , "    background-color: #0056b3;"
+            , "}"
+            , ".calculate-button {"
+            , "    width: 40%;"
+            , "    padding: 10px;"
+            , "    background-color: #28a745;"
+            , "    color: white;"
+            , "    border: none;"
+            , "    border-radius: 5px;"
+            , "    cursor: pointer;"
+            , "    font-size: 16px;"
+            , "    text-align: center;"
             , "}"
             , ".result {"
             , "    font-size: 20px;"
@@ -159,8 +178,7 @@ setup ansRef window = do
     -- GUI elements
     input <- UI.textarea #. "input" # set (attr "placeholder") "Unesite izraz"
     resultLabel <- UI.span #. "result" # set text "Rezultat će biti prikazan ovdje"
-    calculateButton <- UI.button #. "button" # set text "="
-    acButton <- UI.button #. "button" # set text "AC"
+    calculateButton <- UI.button #. "calculate-button" # set text "="
 
     -- Operator buttons
     addButton <- UI.button #. "button-op" # set text "+"
@@ -179,6 +197,7 @@ setup ansRef window = do
     ansButton <- UI.button #. "button-op" # set text "ans"
     lparenButton <- UI.button #. "button-op" # set text "("
     rparenButton <- UI.button #. "button-op" # set text ")"
+    acButton <- UI.button #. "button-op" # set text "AC"
 
     -- Number buttons
     oneButton <- UI.button #. "button-num" # set UI.text "1"
@@ -199,16 +218,20 @@ setup ansRef window = do
         , UI.div #. "container" #+
             [ element input
             , UI.div #. "button-container" #+
-                [ element oneButton, element twoButton, element threeButton, element addButton
-                , element fourButton, element fiveButton, element sixButton, element subButton
-                , element sevenButton, element eightButton, element nineButton, element mulButton
-                , element zeroButton, element dotButton, element lparenButton, element rparenButton
-                , element logButton, element sqrtButton, element sinButton, element cosButton
-                , element tanButton, element powerButton, element divButton
-                , element absButton, element squareButton, element piButton, element ansButton
+                [ UI.div #. "functions-container" #+
+                    [ element squareButton, element powerButton, element absButton, element piButton
+                    , element sqrtButton, element sinButton, element cosButton, element tanButton
+                    , element logButton
+                    ]
+                , UI.div #. "numbers-container" #+
+                    [ element nineButton, element eightButton, element sevenButton, element mulButton
+                    , element fourButton, element fiveButton, element sixButton, element divButton
+                    , element oneButton, element twoButton, element threeButton, element addButton
+                    , element zeroButton, element dotButton, element ansButton, element subButton
+                    , element lparenButton, element rparenButton, element acButton
+                    ]
                 ]
             , element calculateButton
-            , element acButton
             , element resultLabel
             ]
         ]
@@ -274,6 +297,7 @@ setup ansRef window = do
     on UI.click ansButton $ const appendAns
     on UI.click lparenButton $ const $ appendOp "("
     on UI.click rparenButton $ const $ appendOp ")"
+    on UI.click acButton $ const $ element input # set value ""
 
     -- Set button click event for calculate
     on UI.click calculateButton $ \_ -> do
@@ -285,11 +309,6 @@ setup ansRef window = do
             Right val -> do
                 void $ element resultLabel # set text ("Rezultat: " ++ show val)
                 liftIO $ writeIORef ansRef val
-
-    -- Set button click event for AC (clear all input)
-    on UI.click acButton $ \_ -> do
-        void $ element input # set value ""
-        void $ element resultLabel # set text "Rezultat će biti prikazan ovdje"
 
 loadStatic :: IO FilePath
 loadStatic = do
@@ -314,7 +333,7 @@ loadStatic = do
             , "    padding: 20px;"
             , "    border-radius: 10px;"
             , "    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);"
-            , "    max-width: 500px;"
+            , "    max-width: 800px;"
             , "    width: 100%;"
             , "    display: flex;"
             , "    flex-direction: column;"
@@ -331,11 +350,19 @@ loadStatic = do
             , "    resize: none;"
             , "}"
             , ".button-container {"
+            , "    display: flex;"
+            , "    width: 100%;"
+            , "    justify-content: space-between;"
+            , "}"
+            , ".functions-container {"
+            , "    display: grid;"
+            , "    grid-template-columns: repeat(3, 1fr);"
+            , "    gap: 10px;"
+            , "}"
+            , ".numbers-container {"
             , "    display: grid;"
             , "    grid-template-columns: repeat(4, 1fr);"
             , "    gap: 10px;"
-            , "    width: 100%;"
-            , "    margin-bottom: 20px;"
             , "}"
             , ".button, .button-op, .button-num {"
             , "    width: 100%;"
@@ -365,6 +392,17 @@ loadStatic = do
             , "}"
             , ".button:hover, .button-op:hover, .button-num:hover, .button-power:hover {"
             , "    background-color: #0056b3;"
+            , "}"
+            , ".calculate-button {"
+            , "    width: 50%;"
+            , "    padding: 10px;"
+            , "    background-color: #28a745;"
+            , "    color: white;"
+            , "    border: none;"
+            , "    border-radius: 5px;"
+            , "    cursor: pointer;"
+            , "    font-size: 16px;"
+            , "    text-align: center;"
             , "}"
             , ".result {"
             , "    font-size: 20px;"
