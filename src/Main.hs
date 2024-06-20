@@ -18,7 +18,7 @@ import Data.IORef
 void :: Functor f => f a -> f ()
 void = fmap (const ())
 
--- Define the lexer
+-- Definiranje leksera
 lexer :: Token.TokenParser ()
 lexer = Token.makeTokenParser emptyDef
 
@@ -34,7 +34,7 @@ float = Token.float lexer
 whiteSpace :: Parser ()
 whiteSpace = Token.whiteSpace lexer
 
--- Define the expression parser
+-- Definiranje operatora
 exprParser :: Double -> Parser Double
 exprParser ans = buildExpressionParser (table ans) (factor ans)
 
@@ -66,11 +66,11 @@ factor ans = try float
          <|> (Token.reserved lexer "ans" >> return ans)
          <|> (Token.reserved lexer "neg" >> do { base <- factor ans; whiteSpace; x <- factor ans; return (negPower base x) })
 
--- Evaluate a mathematical expression from a string
+-- Evaluacija izraza parsiranih pomoću parsera
 evaluateExpression :: Double -> String -> Either ParseError Double
 evaluateExpression ans = parse (whiteSpace >> exprParser ans) ""
 
--- Function to set cursor position in the input field
+-- Funkcija za postavljanje kursora na određenu poziciju
 setCursorPosition :: Int -> UI ()
 setCursorPosition pos = runFunction $ ffi $
     "document.getElementsByClassName('input')[0].setSelectionRange(" ++ show pos ++ ", " ++ show pos ++ ");"
@@ -85,7 +85,7 @@ setup :: IORef Double -> Window -> UI ()
 setup ansRef window = do
     _ <- return window # set UI.title "Znanstveni kalkulator"
 
-    -- Add CSS styles directly in the HTML
+    -- Dodavanje CSS-a direktno u HTML
     let css = unlines
             [ "body {"
             , "    font-family: Arial, sans-serif;"
@@ -206,10 +206,10 @@ setup ansRef window = do
             , "}"
             ]
 
-    -- Create style element
+    -- Izrada style elemenata
     styleElement <- UI.mkElement "style" # set text css
 
-    -- GUI elements
+    -- GUI elementi
     input <- UI.textarea #. "input" # set (attr "placeholder") "Unesite izraz"
     resultLabel <- UI.span #. "result" # set text "Rezultat će biti prikazan ovdje"
     calculateButton <- UI.button #. "calculate-button" # set text "="
@@ -255,7 +255,7 @@ setup ansRef window = do
     controlButtonsContainer <- UI.div #. "control-buttons-container" #+
         [ element acButton, element backspaceButton ]
 
-    -- Arrange elements in the window
+    -- Posloži elemente u GUI
     void $ getBody window #+
         [ element styleElement
         , UI.div #. "container" #+
@@ -281,7 +281,7 @@ setup ansRef window = do
             ]
         ]
 
-    -- Set button click events for operators and numbers
+    -- Postavi funkcije za gumbe
     let appendOp op = do
             current <- get value input
             void $ element input # set value (current ++ op)
@@ -357,7 +357,7 @@ setup ansRef window = do
     on UI.click backspaceButton $ const backspace
     on UI.click negPowerButton $ const $ appendFunc "neg"
 
-    -- Update for square and absolute buttons
+    -- Update za kvadrat i absolutnu vrijednost
     on UI.click squareButton $ \_ -> do
         current <- get value input
         void $ element input # set value (current ++ "**2")
@@ -375,7 +375,7 @@ setup ansRef window = do
         void $ element resultLabel # set text "Rezultat će biti prikazan ovdje"
         liftIO $ writeIORef ansRef 0.0
 
-    -- Set button click event for calculate
+    -- Postavljanje rezultata
     on UI.click calculateButton $ \_ -> do
         inputExpr <- get value input
         ans <- liftIO $ readIORef ansRef
@@ -388,7 +388,7 @@ setup ansRef window = do
 
 loadStatic :: IO FilePath
 loadStatic = do
-    -- Create a temporary directory for static files
+    -- Izrada privremenog direktorija za statičke datoteke
     dir <- getTemporaryDirectory
     let staticDir = dir </> "static"
     createDirectoryIfMissing True staticDir

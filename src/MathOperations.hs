@@ -21,7 +21,7 @@ multiply x y = x * y
 
 -- Dijeljenje dvaju brojeva
 divide :: Double -> Double -> Either String Double
-divide _ 0 = Left "Cannot divide by zero"
+divide _ 0 = Left "Nije moguće dijeliti s nulom"
 divide x y = Right (x / y)
 
 -- Kvadriranje
@@ -39,14 +39,14 @@ negPower x y = x ** (-y)
 -- Logaritmiranje s bazom
 logarithm :: Double -> Double -> Either String Double
 logarithm x base
-  | x <= 0 = Left "Logarithm undefined for non-positive numbers"
-  | base <= 1 = Left "Logarithm base must be greater than 1"
+  | x <= 0 = Left "Logaritam je definiran samo za pozitivne brojeve"
+  | base <= 1 = Left "Baza logaritma mora biti veća od 1"
   | otherwise = Right (logBase base x)
 
 -- Prirodni logaritam
 ln :: Double -> Either String Double
 ln x
-  | x <= 0 = Left "Natural logarithm undefined for non-positive numbers"
+  | x <= 0 = Left "Prirodni logaritam je definiran samo za pozitivne brojeve"
   | otherwise = Right (log x)
 
 
@@ -69,7 +69,7 @@ tan' = tan
 -- Kvadratni korijen
 sqrt' :: Double -> Either String Double
 sqrt' x
-  | x < 0 = Left "Square root undefined for negative numbers"
+  | x < 0 = Left "Korijen je definiran samo za pozitivne brojeve"
   | otherwise = Right (sqrt x)
 
 -- Pi
@@ -83,6 +83,10 @@ absolute = abs
 -- Eulerov broj
 e' :: Double
 e' = exp 1
+
+
+
+
 
 -- Parsiranje izraza
 
