@@ -39,6 +39,17 @@ logarithm x base
   | base <= 1 = Left "Logarithm base must be greater than 1"
   | otherwise = Right (logBase base x)
 
+-- Prirodni logaritam
+ln :: Double -> Either String Double
+ln x
+  | x <= 0 = Left "Natural logarithm undefined for non-positive numbers"
+  | otherwise = Right (log x)
+
+
+-- Postotak nekog broja
+percentageOf :: Double -> Double -> Double
+percentageOf percent number = (percent / 100) * number
+
 -- Sinus
 sin' :: Double -> Double
 sin' = sin

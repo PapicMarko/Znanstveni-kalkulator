@@ -10,7 +10,7 @@ import Text.Parsec.Expr
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Token
 import Data.Functor.Identity (Identity)
-import MathOperations (add, subtract', multiply, divide, power, square, logarithm, sin', cos', tan', sqrt', pi', absolute, e')
+import MathOperations (add, subtract', multiply, divide, power, square, logarithm, sin', cos', tan', sqrt', pi', absolute, e', ln, percentageOf)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
 import Data.IORef
@@ -38,14 +38,15 @@ whiteSpace = Token.whiteSpace lexer
 exprParser :: Double -> Parser Double
 exprParser ans = buildExpressionParser (table ans) (factor ans)
 
-table :: Double -> [[Operator String () Identity Double]]
+table :: p -> [[Operator String () Identity Double]]
 table _ = [ [Prefix (Token.reservedOp lexer "-" >> return negate)]
-            , [Infix  (Token.reservedOp lexer "**" >> return power) AssocRight]
-            , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
-               Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
-            , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
-               Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
-            ]
+          , [Infix  (Token.reservedOp lexer "%" >> return percentageOf) AssocLeft]
+          , [Infix  (Token.reservedOp lexer "**" >> return power) AssocRight]
+          , [Infix  (Token.reservedOp lexer "*" >> return multiply) AssocLeft,
+             Infix  (Token.reservedOp lexer "/" >> return (\x y -> either (const 0) id (divide x y))) AssocLeft]
+          , [Infix  (Token.reservedOp lexer "+" >> return add) AssocLeft,
+             Infix  (Token.reservedOp lexer "-" >> return subtract') AssocLeft]
+          ]
 
 factor :: Double -> Parser Double
 factor ans = try float
@@ -54,6 +55,7 @@ factor ans = try float
          <|> (Token.reservedOp lexer "sqrt" >> (either (const 0) id . sqrt' <$> parens (exprParser ans)))
          <|> (Token.reservedOp lexer "log" >> (parens (exprParser ans) >>= \x -> return (logBase 10 x)))
          <|> (Token.reservedOp lexer "log" >> do { base <- factor ans; whiteSpace; x <- factor ans; return (either (const 0) id (logarithm base x)) })
+         <|> (Token.reservedOp lexer "ln" >> (parens (exprParser ans) >>= \x -> return (either (const 0) id (ln x))))
          <|> (Token.reservedOp lexer "sin" >> sin' <$> parens (exprParser ans))
          <|> (Token.reservedOp lexer "cos" >> cos' <$> parens (exprParser ans))
          <|> (Token.reservedOp lexer "tan" >> tan' <$> parens (exprParser ans))
@@ -192,11 +194,13 @@ setup ansRef window = do
     mulButton <- UI.button #. "button-op" # set text "*"
     divButton <- UI.button #. "button-op" # set text "/"
     logButton <- UI.button #. "button-op" # set text "log"
+    lnButton <- UI.button #. "button-op" # set text "ln"
     sqrtButton <- UI.button #. "button-op" # set text "√"
     sinButton <- UI.button #. "button-op" # set text "sin"
     cosButton <- UI.button #. "button-op" # set text "cos"
     tanButton <- UI.button #. "button-op" # set text "tan"
     eButton <- UI.button #. "button-op" # set text "e"
+    percentButton <- UI.button #. "button-op" # set text "%"
     powerButton <- UI.button #. "button-power" # set html "<span>x<sup>y</sup></span>"
     squareButton <- UI.button #. "button-op" # set text "x²"
     absButton <- UI.button #. "button-op" # set text "|x|"
@@ -228,14 +232,14 @@ setup ansRef window = do
                 [ UI.div #. "functions-container" #+
                     [ element squareButton, element powerButton, element absButton, element piButton
                     , element sqrtButton, element sinButton, element cosButton, element tanButton
-                    , element logButton, element eButton
+                    , element logButton, element lnButton, element eButton
                     ]
                 , UI.div #. "numbers-container" #+
                     [ element nineButton, element eightButton, element sevenButton, element mulButton
                     , element fourButton, element fiveButton, element sixButton, element divButton
                     , element oneButton, element twoButton, element threeButton, element addButton
                     , element zeroButton, element dotButton, element ansButton, element subButton
-                    , element lparenButton, element rparenButton, element acButton
+                    , element lparenButton, element rparenButton, element acButton, element percentButton
                     ]
                 ]
             , element calculateButton
@@ -261,6 +265,12 @@ setup ansRef window = do
     let appendLog = do
             current <- get value input
             let newVal = current ++ "log("
+            void $ element input # set value newVal
+            setCursorPosition (length newVal)
+
+    let appendLn = do
+            current <- get value input
+            let newVal = current ++ "ln("
             void $ element input # set value newVal
             setCursorPosition (length newVal)
 
@@ -292,7 +302,9 @@ setup ansRef window = do
     on UI.click subButton $ const $ appendOp "-"
     on UI.click mulButton $ const $ appendOp "*"
     on UI.click divButton $ const $ appendOp "/"
+    on UI.click percentButton $ const $ appendOp "%"
     on UI.click logButton $ const appendLog
+    on UI.click lnButton $ const appendLn
     on UI.click sqrtButton $ const $ appendFunc "sqrt"
     on UI.click sinButton $ const $ appendFunc "sin"
     on UI.click cosButton $ const $ appendFunc "cos"
