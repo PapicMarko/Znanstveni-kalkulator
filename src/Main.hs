@@ -55,14 +55,14 @@ factor ans = try float
          <|> (Token.reservedOp lexer "sqrt" >> (either (const 0) id . sqrt' <$> parens (exprParser ans)))
          <|> (Token.reservedOp lexer "log" >> (parens (exprParser ans) >>= \x -> return (logBase 10 x)))
          <|> (Token.reservedOp lexer "log" >> do { base <- factor ans; whiteSpace; x <- factor ans; return (either (const 0) id (logarithm base x)) })
-         <|> (Token.reservedOp lexer "ln" >> (parens (exprParser ans) >>= \x -> return (either (const 0) id (ln x))))
+         <|> (Token.reservedOp lexer "ln" >> (either (const 0) id . ln <$> parens (exprParser ans)))
          <|> (Token.reservedOp lexer "sin" >> sin' <$> parens (exprParser ans))
          <|> (Token.reservedOp lexer "cos" >> cos' <$> parens (exprParser ans))
          <|> (Token.reservedOp lexer "tan" >> tan' <$> parens (exprParser ans))
-         <|> (Token.reservedOp lexer "e" >> return e')
          <|> (Token.reservedOp lexer "abs" >> absolute <$> parens (exprParser ans))
          <|> (Token.reservedOp lexer "square" >> square <$> parens (exprParser ans))
          <|> (Token.reserved lexer "pi" >> return pi')
+         <|> (Token.reserved lexer "e" >> return e')
          <|> (Token.reserved lexer "ans" >> return ans)
 
 -- Evaluate a mathematical expression from a string
@@ -135,7 +135,7 @@ setup ansRef window = do
             , ".button, .button-op, .button-num {"
             , "    width: 100%;"
             , "    padding: 10px;"
-            , "    background-color: ##CCCCCC;"
+            , "    background-color: #CCCCCC;"
             , "    color: black;"
             , "    border: none;"
             , "    border-radius: 5px;"
@@ -144,12 +144,12 @@ setup ansRef window = do
             , "    text-align: center;"
             , "}"
             , ".button:hover, .button-op:hover, .button-num:hover {"
-            , "    background-color: #0056b3;"
+            , "    background-color: #202123;"
             , "}"
             , ".button-power {"
             , "    width: 100%;"
             , "    padding: 10px;"
-            , "    background-color: ##CCCCCC;"
+            , "    background-color: #CCCCCC;"
             , "    color: black;"
             , "    border: none;"
             , "    border-radius: 5px;"
@@ -159,12 +159,12 @@ setup ansRef window = do
             , "    font-family: Arial, sans-serif;"
             , "}"
             , ".button:hover, .button-op:hover, .button-num:hover, .button-power:hover {"
-            , "    background-color: #0056b3;"
+            , "    background-color: #73747A;"
             , "}"
             , ".calculate-button {"
             , "    width: 40%;"
             , "    padding: 10px;"
-            , "    background-color: #fa0000;"
+            , "    background-color: #1433E1;"
             , "    color: white;"
             , "    border: none;"
             , "    border-radius: 5px;"
@@ -177,6 +177,31 @@ setup ansRef window = do
             , "    font-weight: bold;"
             , "    margin-top: 20px;"
             , "    text-align: center;"
+            , "}"
+            , ".calculate-button:hover {"
+            , "    background-color: #202123;"
+            , "}"
+            , ".control-buttons-container {"
+            , "    display: flex;"
+            , "    justify-content: flex-end;"
+            , "    margin-top: 10px;"
+            , "    margin-bottom: 10px;"
+            , "    width: 100%;"
+            , "    gap: 10px;"
+            , "}"
+            , ".control-buttons-container button {"
+            , "    width: 10%;"
+            , "    padding: 10px;"
+            , "    background-color: #1433E1;"
+            , "    color: white;"
+            , "    border: none;"
+            , "    border-radius: 20px;"
+            , "    cursor: pointer;"
+            , "    font-size: 16px;"
+            , "    text-align: center;"
+            , "}"
+            , ".control-buttons-container button:hover {"
+            , "    background-color: #202123;"
             , "}"
             ]
 
@@ -194,13 +219,10 @@ setup ansRef window = do
     mulButton <- UI.button #. "button-op" # set text "*"
     divButton <- UI.button #. "button-op" # set text "/"
     logButton <- UI.button #. "button-op" # set text "log"
-    lnButton <- UI.button #. "button-op" # set text "ln"
     sqrtButton <- UI.button #. "button-op" # set text "√"
     sinButton <- UI.button #. "button-op" # set text "sin"
     cosButton <- UI.button #. "button-op" # set text "cos"
     tanButton <- UI.button #. "button-op" # set text "tan"
-    eButton <- UI.button #. "button-op" # set text "e"
-    percentButton <- UI.button #. "button-op" # set text "%"
     powerButton <- UI.button #. "button-power" # set html "<span>x<sup>y</sup></span>"
     squareButton <- UI.button #. "button-op" # set text "x²"
     absButton <- UI.button #. "button-op" # set text "|x|"
@@ -209,6 +231,10 @@ setup ansRef window = do
     lparenButton <- UI.button #. "button-op" # set text "("
     rparenButton <- UI.button #. "button-op" # set text ")"
     acButton <- UI.button #. "button-op" # set text "AC"
+    backspaceButton <- UI.button #. "button-op" # set text "⌫"
+    percentButton <- UI.button #. "button-op" # set text "%"
+    lnButton <- UI.button #. "button-op" # set text "ln"
+    eButton <- UI.button #. "button-op" # set text "e"
 
     -- Number buttons
     oneButton <- UI.button #. "button-num" # set UI.text "1"
@@ -223,6 +249,10 @@ setup ansRef window = do
     zeroButton <- UI.button #. "button-num" # set UI.text "0"
     dotButton <- UI.button #. "button-num" # set UI.text "."
 
+    -- Control buttons container
+    controlButtonsContainer <- UI.div #. "control-buttons-container" #+
+        [ element acButton, element backspaceButton ]
+
     -- Arrange elements in the window
     void $ getBody window #+
         [ element styleElement
@@ -230,18 +260,20 @@ setup ansRef window = do
             [ element input
             , UI.div #. "button-container" #+
                 [ UI.div #. "functions-container" #+
-                    [ element squareButton, element powerButton, element absButton, element piButton
-                    , element sqrtButton, element sinButton, element cosButton, element tanButton
-                    , element logButton, element lnButton, element eButton
+                    [ element squareButton, element powerButton, element absButton
+                    , element piButton, element sqrtButton, element sinButton
+                    , element cosButton, element tanButton, element logButton
+                    , element lnButton, element eButton
                     ]
                 , UI.div #. "numbers-container" #+
                     [ element nineButton, element eightButton, element sevenButton, element mulButton
                     , element fourButton, element fiveButton, element sixButton, element divButton
                     , element oneButton, element twoButton, element threeButton, element addButton
                     , element zeroButton, element dotButton, element ansButton, element subButton
-                    , element lparenButton, element rparenButton, element acButton, element percentButton
+                    , element lparenButton, element rparenButton, element percentButton
                     ]
                 ]
+            , element controlButtonsContainer
             , element calculateButton
             , element resultLabel
             ]
@@ -286,6 +318,15 @@ setup ansRef window = do
             current <- get value input
             void $ element input # set value (current ++ "ans")
 
+    let backspace = do
+            current <- get value input
+            if not (null current)
+                then do
+                    let newVal = init current
+                    void $ element input # set value newVal
+                    setCursorPosition (length newVal)
+                    else return ()
+
     on UI.click oneButton $ \_ -> appendNum "1"
     on UI.click twoButton $ \_ -> appendNum "2"
     on UI.click threeButton $ \_ -> appendNum "3"
@@ -311,6 +352,7 @@ setup ansRef window = do
     on UI.click tanButton $ const $ appendFunc "tan"
     on UI.click powerButton $ const $ appendOp "**"
     on UI.click eButton $ const appendE
+    on UI.click backspaceButton $ const backspace
 
     -- Update for square and absolute buttons
     on UI.click squareButton $ \_ -> do
