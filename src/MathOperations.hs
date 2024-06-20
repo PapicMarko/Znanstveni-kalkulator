@@ -32,6 +32,10 @@ square x = x ** 2
 power :: Double -> Double -> Double
 power x y = x ** y
 
+-- Potenciranje s negativnim eksponentom
+negPower :: Double -> Double -> Double
+negPower x y = x ** (-y)
+
 -- Logaritmiranje s bazom
 logarithm :: Double -> Double -> Either String Double
 logarithm x base

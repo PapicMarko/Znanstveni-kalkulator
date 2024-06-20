@@ -10,7 +10,7 @@ import Text.Parsec.Expr
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Token
 import Data.Functor.Identity (Identity)
-import MathOperations (add, subtract', multiply, divide, power, square, logarithm, sin', cos', tan', sqrt', pi', absolute, e', ln, percentageOf)
+import MathOperations (add, subtract', multiply, divide, power, square, logarithm, sin', cos', tan', sqrt', pi', absolute, e', ln, percentageOf, negPower)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
 import Data.IORef
@@ -64,6 +64,7 @@ factor ans = try float
          <|> (Token.reserved lexer "pi" >> return pi')
          <|> (Token.reserved lexer "e" >> return e')
          <|> (Token.reserved lexer "ans" >> return ans)
+         <|> (Token.reserved lexer "neg" >> do { base <- factor ans; whiteSpace; x <- factor ans; return (negPower base x) })
 
 -- Evaluate a mathematical expression from a string
 evaluateExpression :: Double -> String -> Either ParseError Double
@@ -235,6 +236,7 @@ setup ansRef window = do
     percentButton <- UI.button #. "button-op" # set text "%"
     lnButton <- UI.button #. "button-op" # set text "ln"
     eButton <- UI.button #. "button-op" # set text "e"
+    negPowerButton <- UI.button #. "button-op" # set text "x^-y"
 
     -- Number buttons
     oneButton <- UI.button #. "button-num" # set UI.text "1"
@@ -260,10 +262,10 @@ setup ansRef window = do
             [ element input
             , UI.div #. "button-container" #+
                 [ UI.div #. "functions-container" #+
-                    [ element squareButton, element powerButton, element absButton
-                    , element piButton, element sqrtButton, element sinButton
-                    , element cosButton, element tanButton, element logButton
-                    , element lnButton, element eButton
+                    [ element squareButton, element powerButton, element negPowerButton
+                    , element absButton,element piButton, element sqrtButton
+                    , element sinButton, element cosButton, element tanButton
+                    , element logButton, element lnButton, element eButton
                     ]
                 , UI.div #. "numbers-container" #+
                     [ element nineButton, element eightButton, element sevenButton, element mulButton
@@ -353,6 +355,7 @@ setup ansRef window = do
     on UI.click powerButton $ const $ appendOp "**"
     on UI.click eButton $ const appendE
     on UI.click backspaceButton $ const backspace
+    on UI.click negPowerButton $ const $ appendFunc "neg"
 
     -- Update for square and absolute buttons
     on UI.click squareButton $ \_ -> do
