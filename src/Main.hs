@@ -13,7 +13,6 @@ import Data.Functor.Identity (Identity)
 import MathOperations (add, subtract', multiply, divide, power, square, logarithm, sin', cos', tan', sqrt', pi', absolute, e', ln, percentageOf, negPower)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
-import Data.IORef
 
 void :: Functor f => f a -> f ()
 void = fmap (const ())
@@ -66,23 +65,17 @@ factor ans = try float
          <|> (Token.reserved lexer "ans" >> return ans)
          <|> (Token.reserved lexer "neg" >> do { base <- factor ans; whiteSpace; x <- factor ans; return (negPower base x) })
 
--- Evaluacija izraza parsiranih pomoću parsera
-evaluateExpression :: Double -> String -> Either ParseError Double
-evaluateExpression ans = parse (whiteSpace >> exprParser ans) ""
+parseExpression :: Double -> String -> Either ParseError Double
+parseExpression ans input = parse (whiteSpace >> exprParser ans) "" input
 
--- Funkcija za postavljanje kursora na određenu poziciju
-setCursorPosition :: Int -> UI ()
-setCursorPosition pos = runFunction $ ffi $
-    "document.getElementsByClassName('input')[0].setSelectionRange(" ++ show pos ++ ", " ++ show pos ++ ");"
-
+-- Funkcija za pokretanje GUI aplikacije
 main :: IO ()
 main = do
     static <- loadStatic
-    ansRef <- newIORef 0.0
-    startGUI defaultConfig { jsPort = Just 8023, jsStatic = Just static } (setup ansRef)
+    startGUI defaultConfig { jsPort = Just 8023, jsStatic = Just static } setup
 
-setup :: IORef Double -> Window -> UI ()
-setup ansRef window = do
+setup :: Window -> UI ()
+setup window = void $ do
     _ <- return window # set UI.title "Znanstveni kalkulator"
 
     -- Dodavanje CSS-a direktno u HTML
@@ -294,19 +287,16 @@ setup ansRef window = do
             current <- get value input
             let newVal = current ++ func ++ "("
             void $ element input # set value newVal
-            setCursorPosition (length newVal)
 
     let appendLog = do
             current <- get value input
             let newVal = current ++ "log("
             void $ element input # set value newVal
-            setCursorPosition (length newVal)
 
     let appendLn = do
             current <- get value input
             let newVal = current ++ "ln("
             void $ element input # set value newVal
-            setCursorPosition (length newVal)
 
     let appendE = do
             current <- get value input
@@ -326,8 +316,7 @@ setup ansRef window = do
                 then do
                     let newVal = init current
                     void $ element input # set value newVal
-                    setCursorPosition (length newVal)
-                    else return ()
+                else return ()
 
     on UI.click oneButton $ \_ -> appendNum "1"
     on UI.click twoButton $ \_ -> appendNum "2"
@@ -373,18 +362,17 @@ setup ansRef window = do
     on UI.click acButton $ \_ -> do
         void $ element input # set value ""
         void $ element resultLabel # set text "Rezultat će biti prikazan ovdje"
-        liftIO $ writeIORef ansRef 0.0
 
     -- Postavljanje rezultata
     on UI.click calculateButton $ \_ -> do
         inputExpr <- get value input
-        ans <- liftIO $ readIORef ansRef
-        let result = evaluateExpression ans inputExpr
+        let result = evaluateExpression 0 inputExpr
         case result of
             Left err -> void $ element resultLabel # set text ("Greška: " ++ show err)
-            Right val -> do
-                void $ element resultLabel # set text ("Rezultat: " ++ show val)
-                liftIO $ writeIORef ansRef val
+            Right val -> void $ element resultLabel # set text ("Rezultat: " ++ show val)
+
+evaluateExpression :: Double -> String -> Either ParseError Double
+evaluateExpression ans input = parseExpression ans input
 
 loadStatic :: IO FilePath
 loadStatic = do
