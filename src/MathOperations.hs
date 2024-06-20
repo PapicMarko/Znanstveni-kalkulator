@@ -65,6 +65,10 @@ pi' = pi
 absolute :: Double -> Double
 absolute = abs
 
+-- Eulerov broj
+e' :: Double
+e' = exp 1
+
 -- Parsiranje izraza
 
 lexer :: Token.GenTokenParser String u Identity

@@ -10,7 +10,7 @@ import Text.Parsec.Expr
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Token
 import Data.Functor.Identity (Identity)
-import MathOperations (add, subtract', multiply, divide, power, square, logarithm, sin', cos', tan', sqrt', pi', absolute)
+import MathOperations (add, subtract', multiply, divide, power, square, logarithm, sin', cos', tan', sqrt', pi', absolute, e')
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
 import Data.IORef
@@ -57,6 +57,7 @@ factor ans = try float
          <|> (Token.reservedOp lexer "sin" >> sin' <$> parens (exprParser ans))
          <|> (Token.reservedOp lexer "cos" >> cos' <$> parens (exprParser ans))
          <|> (Token.reservedOp lexer "tan" >> tan' <$> parens (exprParser ans))
+         <|> (Token.reservedOp lexer "e" >> return e')
          <|> (Token.reservedOp lexer "abs" >> absolute <$> parens (exprParser ans))
          <|> (Token.reservedOp lexer "square" >> square <$> parens (exprParser ans))
          <|> (Token.reserved lexer "pi" >> return pi')
@@ -195,6 +196,7 @@ setup ansRef window = do
     sinButton <- UI.button #. "button-op" # set text "sin"
     cosButton <- UI.button #. "button-op" # set text "cos"
     tanButton <- UI.button #. "button-op" # set text "tan"
+    eButton <- UI.button #. "button-op" # set text "e"
     powerButton <- UI.button #. "button-power" # set html "<span>x<sup>y</sup></span>"
     squareButton <- UI.button #. "button-op" # set text "x²"
     absButton <- UI.button #. "button-op" # set text "|x|"
@@ -226,7 +228,7 @@ setup ansRef window = do
                 [ UI.div #. "functions-container" #+
                     [ element squareButton, element powerButton, element absButton, element piButton
                     , element sqrtButton, element sinButton, element cosButton, element tanButton
-                    , element logButton
+                    , element logButton, element eButton
                     ]
                 , UI.div #. "numbers-container" #+
                     [ element nineButton, element eightButton, element sevenButton, element mulButton
@@ -262,6 +264,10 @@ setup ansRef window = do
             void $ element input # set value newVal
             setCursorPosition (length newVal)
 
+    let appendE = do
+            current <- get value input
+            void $ element input # set value (current ++ "e")
+
     let appendPi = do
             current <- get value input
             void $ element input # set value (current ++ "pi")
@@ -292,6 +298,7 @@ setup ansRef window = do
     on UI.click cosButton $ const $ appendFunc "cos"
     on UI.click tanButton $ const $ appendFunc "tan"
     on UI.click powerButton $ const $ appendOp "**"
+    on UI.click eButton $ const appendE
 
     -- Update for square and absolute buttons
     on UI.click squareButton $ \_ -> do
