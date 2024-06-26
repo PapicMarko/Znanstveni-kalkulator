@@ -13,6 +13,7 @@ import Data.Functor.Identity (Identity)
 import MathOperations (add, subtract', multiply, divide, power, square, logarithm, sin', cos', tan', sqrt', pi', absolute, e', ln, percentageOf, negPower)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
+import Data.IORef (newIORef, readIORef, writeIORef)
 
 void :: Functor f => f a -> f ()
 void = fmap (const ())
@@ -77,6 +78,7 @@ main = do
 setup :: Window -> UI ()
 setup window = void $ do
     _ <- return window # set UI.title "Znanstveni kalkulator"
+    lastResult <- UI.liftIO $ newIORef 0.0
 
     -- Dodavanje CSS-a direktno u HTML
     let css = unlines
@@ -308,7 +310,8 @@ setup window = void $ do
 
     let appendAns = do
             current <- get value input
-            void $ element input # set value (current ++ "ans")
+            lastAns <- UI.liftIO $ readIORef lastResult
+            void $ element input # set value (current ++ show lastAns)
 
     let backspace = do
             current <- get value input
@@ -363,16 +366,19 @@ setup window = void $ do
         void $ element input # set value ""
         void $ element resultLabel # set text "Rezultat će biti prikazan ovdje"
 
-    -- Postavljanje rezultata
+    -- Postavljanje funkcije za izračun
     on UI.click calculateButton $ \_ -> do
         inputExpr <- get value input
-        let result = evaluateExpression 0 inputExpr
+        lastAns <- UI.liftIO $ readIORef lastResult
+        let result = evaluateExpression lastAns inputExpr
         case result of
             Left err -> void $ element resultLabel # set text ("Greška: " ++ show err)
-            Right val -> void $ element resultLabel # set text ("Rezultat: " ++ show val)
+            Right val -> do
+                void $ element resultLabel # set text ("Rezultat: " ++ show val)
+                UI.liftIO $ writeIORef lastResult val
 
 evaluateExpression :: Double -> String -> Either ParseError Double
-evaluateExpression ans input = parseExpression ans input
+evaluateExpression lastAns input = parseExpression lastAns input
 
 loadStatic :: IO FilePath
 loadStatic = do
