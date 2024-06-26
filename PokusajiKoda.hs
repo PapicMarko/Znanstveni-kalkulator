@@ -356,7 +356,7 @@ setup window = void $ do
 
     on UI.click absButton $ \_ -> do
         current <- get value input
-        void $ element input # set value ("abs(" ++ current)
+        void $ element input # set value ("abs(" ++ current ++ ")")
 
     on UI.click piButton $ const appendPi
     on UI.click ansButton $ const appendAns
