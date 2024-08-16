@@ -7,89 +7,35 @@ import qualified Text.Parsec.Token as Token
 import Text.Parsec.Expr
 import Data.Functor.Identity (Identity)
 
--- Zbrajanje dvaju brojeva
-add :: Double -> Double -> Double
-add x y = x + y
 
--- Oduzimanje dvaju brojeva
-subtract' :: Double -> Double -> Double
-subtract' x y = x - y
+-- Funkcije koje Haskell ne podržava nativno
 
--- Množenje dvaju brojeva
-multiply :: Double -> Double -> Double
-multiply x y = x * y
+-- Kvadratni korijen s rukovanjem greškom
+sqrt' :: Double -> Either String Double
+sqrt' x
+  | x < 0 = Left "Korijen je definiran samo za pozitivne brojeve"
+  | otherwise = Right (sqrt x)
 
--- Dijeljenje dvaju brojeva
-divide :: Double -> Double -> Either String Double
-divide _ 0 = Left "Nije moguće dijeliti s nulom"
-divide x y = Right (x / y)
-
--- Kvadriranje
-square :: Double -> Double
-square x = x ** 2
-
--- Potenciranje
-power :: Double -> Double -> Double
-power x y = x ** y
-
--- Potenciranje s negativnim eksponentom
-negPower :: Double -> Double -> Double
-negPower x y = x ** (-y)
-
--- Logaritmiranje s bazom
+-- Logaritmiranje s bazom s rukovanjem greškom
 logarithm :: Double -> Double -> Either String Double
 logarithm x base
   | x <= 0 = Left "Logaritam je definiran samo za pozitivne brojeve"
   | base <= 1 = Left "Baza logaritma mora biti veća od 1"
   | otherwise = Right (logBase base x)
 
--- Prirodni logaritam
+-- Prirodni logaritam s rukovanjem greškom
 ln :: Double -> Either String Double
 ln x
   | x <= 0 = Left "Prirodni logaritam je definiran samo za pozitivne brojeve"
   | otherwise = Right (log x)
 
-
 -- Postotak nekog broja
 percentageOf :: Double -> Double -> Double
 percentageOf percent number = (percent / 100) * number
 
--- Sinus
-sin' :: Double -> Double
-sin' = sin
-
--- Kosinus
-cos' :: Double -> Double
-cos' = cos
-
--- Tangens
-tan' :: Double -> Double
-tan' = tan
-
--- Kvadratni korijen
-sqrt' :: Double -> Either String Double
-sqrt' x
-  | x < 0 = Left "Korijen je definiran samo za pozitivne brojeve"
-  | otherwise = Right (sqrt x)
-
--- Pi
-pi' :: Double
-pi' = pi
-
--- Apsolutna vrijednost
-absolute :: Double -> Double
-absolute = abs
-
--- Eulerov broj
-e' :: Double
-e' = exp 1
 
 
-
-
-
--- Parsiranje izraza
-
+-- Lexer definicija
 lexer :: Token.GenTokenParser String u Identity
 lexer = Token.makeTokenParser emptyDef
 
@@ -105,17 +51,33 @@ float = Token.float lexer
 reservedOp :: String -> Parser ()
 reservedOp = Token.reservedOp lexer
 
+reserved :: String -> Parser ()
+reserved = Token.reserved lexer
+
+whiteSpace :: Parser ()
+whiteSpace = Token.whiteSpace lexer
+
+-- Definiranje parsera za funkcije
 expressionParser :: Parser Double
 expressionParser = buildExpressionParser operators term
 
 term :: Parser Double
-term = parens expressionParser
-    <|> try float
+term = try float
     <|> (fromInteger <$> integer)
+    <|> parens expressionParser
+    <|> (reserved "sqrt" >> (either (const 0) id . sqrt' <$> parens expressionParser))
+    <|> (reserved "log" >> (either (const 0) id . logarithm 10 <$> parens expressionParser))
+    <|> (reserved "ln" >> (either (const 0) id . ln <$> parens expressionParser))
+    <|> (reserved "sin" >> sin <$> parens expressionParser)
+    <|> (reserved "cos" >> cos <$> parens expressionParser)
+    <|> (reserved "tan" >> tan <$> parens expressionParser)
+    <|> (reserved "abs" >> abs <$> parens expressionParser)
+    <|> (reserved "pi" >> return pi)
+    <|> (reserved "e" >> return (exp 1))
 
 operators :: [[Operator String () Identity Double]]
 operators = [ [Prefix (reservedOp "-" >> return negate) ]
-            , [Infix (reservedOp "^" >> return power) AssocRight]
+            , [Infix (reservedOp "^" >> return (**)) AssocRight]
             , [Infix (reservedOp "*" >> return (*)) AssocLeft,
                Infix (reservedOp "/" >> return (/)) AssocLeft]
             , [Infix (reservedOp "+" >> return (+)) AssocLeft,
@@ -123,4 +85,4 @@ operators = [ [Prefix (reservedOp "-" >> return negate) ]
             ]
 
 parseExpression :: String -> Either ParseError Double
-parseExpression input = parse expressionParser "" input
+parseExpression input = parse (whiteSpace >> expressionParser) "" input
