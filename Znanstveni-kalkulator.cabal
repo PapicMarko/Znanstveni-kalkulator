@@ -18,7 +18,7 @@ common warnings
 executable Znanstveni-kalkulator
   import:             warnings
   main-is:            Main.hs
-  other-modules:      MathOperations
+  other-modules:      MathParser
   -- other-extensions:
   build-depends:      base >=4.17.2.1, threepenny-gui, text, directory, filepath, parsec
   hs-source-dirs:     src

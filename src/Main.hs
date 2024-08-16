@@ -4,7 +4,7 @@ module Main where
 
 import Graphics.UI.Threepenny.Core
 import qualified Graphics.UI.Threepenny as UI
-import MathOperations (parseExpression)  -- Uvozimo samo potrebne funkcije
+import MathParser (parseExpression)  -- Uvozimo samo potrebne funkcije
 import Data.IORef (newIORef, readIORef, writeIORef)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
@@ -120,16 +120,6 @@ setup window = void $ do
             let newVal = current ++ func ++ "("
             void $ element input # set value newVal
 
-    let appendLog = do
-            current <- get value input
-            let newVal = current ++ "log("
-            void $ element input # set value newVal
-
-    let appendLn = do
-            current <- get value input
-            let newVal = current ++ "ln("
-            void $ element input # set value newVal
-
     let appendE = do
             current <- get value input
             void $ element input # set value (current ++ "e")
@@ -168,8 +158,8 @@ setup window = void $ do
     on UI.click mulButton $ const $ appendOp "*"
     on UI.click divButton $ const $ appendOp "/"
     on UI.click percentButton $ const $ appendOp "%"
-    on UI.click logButton $ const appendLog
-    on UI.click lnButton $ const appendLn
+    on UI.click logButton $ \_ -> appendOp "log _()"
+    on UI.click lnButton $ \_ -> appendOp "ln()"
     on UI.click sqrtButton $ const $ appendFunc "sqrt"
     on UI.click sinButton $ const $ appendFunc "sin"
     on UI.click cosButton $ const $ appendFunc "cos"
