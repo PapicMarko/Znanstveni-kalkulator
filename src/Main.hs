@@ -164,7 +164,7 @@ setup window = void $ do
     on UI.click mulButton $ const $ appendOp "*"
     on UI.click divButton $ const $ appendOp "/"
     on UI.click percentButton $ const $ appendOp "%"
-    on UI.click logButton $ const $ appendOp "log"
+    on UI.click logButton $ const $ appendOp "log _()"
     on UI.click lnButton $ const $ appendOp "ln"
     on UI.click sqrtButton $ const $ appendFunc "sqrt"
     on UI.click sinButton $ const $ appendFunc "sin"
