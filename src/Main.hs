@@ -9,9 +9,12 @@ import Data.IORef (newIORef, readIORef, writeIORef)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
 
-
 void :: Functor f => f a -> f ()
 void = fmap (const ())
+
+-- Funkcija za umetanje teksta na poziciju kursora
+insertTextAtCursor :: String -> String -> UI ()
+insertTextAtCursor inputId insertedText = runFunction $ ffi "window.insertTextAtCursor(%1, %2)" inputId insertedText
 
 -- Funkcija za pokretanje GUI aplikacije
 main :: IO ()
@@ -23,6 +26,10 @@ main = do
 loadCSS :: FilePath -> IO String
 loadCSS path = readFile path
 
+-- Funkcija za učitavanje JavaScript datoteke
+loadJavaScript :: FilePath -> IO String
+loadJavaScript path = readFile path
+
 setup :: Window -> UI ()
 setup window = void $ do
     _ <- return window # set UI.title "Znanstveni kalkulator"
@@ -30,14 +37,17 @@ setup window = void $ do
 
     -- Učitavanje sadržaja style.css datoteke
     cssContent <- liftIO $ loadCSS "static/css/style.css"
-
-    -- Umetanje CSS-a direktno u HTML
     let cssElement = UI.mkElement "style" # set UI.text cssContent
     _ <- getHead window #+ [cssElement]
 
+    -- Učitavanje sadržaja script.js datoteke
+    jsContent <- liftIO $ loadJavaScript "static/js/script.js"
+    let jsElement = UI.mkElement "script" # set UI.text jsContent
+    _ <- getHead window #+ [jsElement]
+
     -- Definiranje UI elemenata
-    input <- UI.textarea #. "input" # set (attr "placeholder") "Unesite izraz"
-    resultLabel <- UI.span #. "result" # set UI.text "Rezultat ce biti prikazan ovdje"
+    input <- UI.textarea #. "input" # set (attr "placeholder") "Unesite izraz" # set UI.id_ "inputField"
+    resultLabel <- UI.span #. "result" # set UI.text "Rezultat će biti prikazan ovdje"
     calculateButton <- UI.button #. "calculate-button" # set UI.text "="
 
     -- Operator buttons
@@ -106,32 +116,21 @@ setup window = void $ do
             ]
         ]
 
-    -- Funkcije za gumbe
-    let appendOp op = do
-            current <- get value input
-            void $ element input # set value (current ++ op)
+        -- Funkcije za gumbe
+    let appendOp op = insertTextAtCursor "inputField" op
+    let appendNum num = insertTextAtCursor "inputField" num
+    let appendFunc func = insertTextAtCursor "inputField" (func ++ "(")
+    let appendE = insertTextAtCursor "inputField" "e"
+    
+    -- Precizne funkcije za kvadriranje, pi i abs
+    let insertSquare = insertTextAtCursor "inputField" "**2"
+    let insertPi = insertTextAtCursor "inputField" "pi"
+    let insertAbs = insertTextAtCursor "inputField" "abs("
 
-    let appendNum num = do
-            current <- get value input
-            void $ element input # set value (current ++ num)
-
-    let appendFunc func = do
-            current <- get value input
-            let newVal = current ++ func ++ "("
-            void $ element input # set value newVal
-
-    let appendE = do
-            current <- get value input
-            void $ element input # set value (current ++ "e")
-
-    let appendPi = do
-            current <- get value input
-            void $ element input # set value (current ++ "pi")
-
+    -- Definiraj appendAns i backspace
     let appendAns = do
-            current <- get value input
             lastAns <- UI.liftIO $ readIORef lastResult
-            void $ element input # set value (current ++ show lastAns)
+            insertTextAtCursor "inputField" (show lastAns)
 
     let backspace = do
             current <- get value input
@@ -141,6 +140,13 @@ setup window = void $ do
                     void $ element input # set value newVal
                 else return ()
 
+    -- Update za kvadrat, pi i apsolutnu vrijednost
+    on UI.click squareButton $ const insertSquare
+    on UI.click piButton $ const insertPi
+    on UI.click absButton $ const insertAbs
+    on UI.click ansButton $ const appendAns  -- Ovo je važno za funkcionalnost ans gumba
+
+    -- Ostali gumbi
     on UI.click oneButton $ \_ -> appendNum "1"
     on UI.click twoButton $ \_ -> appendNum "2"
     on UI.click threeButton $ \_ -> appendNum "3"
@@ -158,8 +164,8 @@ setup window = void $ do
     on UI.click mulButton $ const $ appendOp "*"
     on UI.click divButton $ const $ appendOp "/"
     on UI.click percentButton $ const $ appendOp "%"
-    on UI.click logButton $ \_ -> appendOp "log _()"
-    on UI.click lnButton $ \_ -> appendOp "ln()"
+    on UI.click logButton $ const $ appendOp "log"
+    on UI.click lnButton $ const $ appendOp "ln"
     on UI.click sqrtButton $ const $ appendFunc "sqrt"
     on UI.click sinButton $ const $ appendFunc "sin"
     on UI.click cosButton $ const $ appendFunc "cos"
@@ -169,29 +175,31 @@ setup window = void $ do
     on UI.click backspaceButton $ const backspace
     on UI.click negPowerButton $ const $ appendFunc "neg"
 
-    -- Update za kvadrat i absolutnu vrijednost
-    on UI.click squareButton $ \_ -> do
-        current <- get value input
-        void $ element input # set value (current ++ "**2")
-
-    on UI.click absButton $ \_ -> do
-        current <- get value input
-        void $ element input # set value ("abs(" ++ current)
-
-    on UI.click piButton $ const appendPi
-    on UI.click ansButton $ const appendAns
     on UI.click lparenButton $ const $ appendOp "("
     on UI.click rparenButton $ const $ appendOp ")"
     on UI.click acButton $ \_ -> do
         void $ element input # set value ""
-        void $ element resultLabel # set text "Rezultat ce biti prikazan ovdje"
+        void $ element resultLabel # set text "Rezultat će biti prikazan ovdje"
+        liftIO $ writeIORef lastResult 0.0 -- Resetiraj zadnji rezultat
 
     -- Postavljanje funkcije za izračun
     on UI.click calculateButton $ \_ -> do
         inputExpr <- get value input
         let result = parseExpression inputExpr
         case result of
-            Left err -> void $ element resultLabel # set text ("Greska: " ++ show err)
+            Left err -> void $ element resultLabel # set text ("Greška: " ++ show err)
+            Right val -> do
+                void $ element resultLabel # set text ("Rezultat: " ++ show val)
+                UI.liftIO $ writeIORef lastResult val -- Spremi zadnji rezultat u ans
+
+
+
+    -- Postavljanje funkcije za izračun
+    on UI.click calculateButton $ \_ -> do
+        inputExpr <- get value input
+        let result = parseExpression inputExpr
+        case result of
+            Left err -> void $ element resultLabel # set text ("Greška: " ++ show err)
             Right val -> do
                 void $ element resultLabel # set text ("Rezultat: " ++ show val)
                 UI.liftIO $ writeIORef lastResult val

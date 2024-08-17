@@ -86,7 +86,7 @@ term = try float
 
 operators :: [[Operator String () Identity Double]]
 operators = [ [Prefix (reservedOp "-" >> return negate) ]
-            , [Infix (reservedOp "^" >> return (**)) AssocRight]
+            , [Infix (reservedOp "**" >> return (**)) AssocRight]
             , [Infix (reservedOp "*" >> return (*)) AssocLeft,
                Infix (reservedOp "/" >> return (/)) AssocLeft]
             , [Infix (reservedOp "+" >> return (+)) AssocLeft,

@@ -10,7 +10,7 @@ maintainer:          marko.papic222@gmail.com
 -- copyright:
 category:            Math
 build-type:          Simple
-extra-source-files:  CHANGELOG.md, static/style.css
+extra-source-files:  CHANGELOG.md, static/css/style.css, static/js/script.js
 
 common warnings
   ghc-options: -Wall
