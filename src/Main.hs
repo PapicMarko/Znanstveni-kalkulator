@@ -116,10 +116,12 @@ setup window = void $ do
             ]
         ]
 
-        -- Funkcije za gumbe
+    -- Funkcije za gumbe
     let appendOp op = insertTextAtCursor "inputField" op
     let appendNum num = insertTextAtCursor "inputField" num
-    let appendFunc func = insertTextAtCursor "inputField" (func ++ "(")
+    let appendFunc func needsParenthesis = do
+            let textToInsert = if needsParenthesis then func ++ "(" else func
+            insertTextAtCursor "inputField" textToInsert
     let appendE = insertTextAtCursor "inputField" "e"
     
     -- Precizne funkcije za kvadriranje, pi i abs
@@ -164,16 +166,16 @@ setup window = void $ do
     on UI.click mulButton $ const $ appendOp "*"
     on UI.click divButton $ const $ appendOp "/"
     on UI.click percentButton $ const $ appendOp "%"
-    on UI.click logButton $ const $ appendOp "log _()"
+    on UI.click logButton $ const $ appendOp "log _()" 
     on UI.click lnButton $ const $ appendOp "ln"
-    on UI.click sqrtButton $ const $ appendFunc "sqrt"
-    on UI.click sinButton $ const $ appendFunc "sin"
-    on UI.click cosButton $ const $ appendFunc "cos"
-    on UI.click tanButton $ const $ appendFunc "tan"
+    on UI.click sqrtButton $ const $ appendFunc "sqrt" True
+    on UI.click sinButton $ const $ appendFunc "sin" True
+    on UI.click cosButton $ const $ appendFunc "cos" True
+    on UI.click tanButton $ const $ appendFunc "tan" True
     on UI.click powerButton $ const $ appendOp "**"
     on UI.click eButton $ const appendE
     on UI.click backspaceButton $ const backspace
-    on UI.click negPowerButton $ const $ appendFunc "neg"
+    on UI.click negPowerButton $ const $ appendFunc "**(-" False
 
     on UI.click lparenButton $ const $ appendOp "("
     on UI.click rparenButton $ const $ appendOp ")"
