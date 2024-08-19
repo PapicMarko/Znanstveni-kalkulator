@@ -4,7 +4,7 @@ module Main where
 
 import Graphics.UI.Threepenny.Core
 import qualified Graphics.UI.Threepenny as UI
-import MathParser (parseExpression)  -- Uvozimo samo potrebne funkcije
+import MathParser (parseExpression)
 import Data.IORef (newIORef, readIORef, writeIORef)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
@@ -56,6 +56,7 @@ setup window = void $ do
     mulButton <- UI.button #. "button-op" # set UI.text "*"
     divButton <- UI.button #. "button-op" # set UI.text "/"
     logButton <- UI.button #. "button-op" # set UI.text "log"
+    logBaseButton <- UI.button #. "button-op" # set UI.html "log<sub>b</sub>(n)"
     sqrtButton <- UI.button #. "button-op" # set UI.text "√"
     sinButton <- UI.button #. "button-op" # set UI.text "sin"
     cosButton <- UI.button #. "button-op" # set UI.text "cos"
@@ -100,7 +101,7 @@ setup window = void $ do
                     [ element squareButton, element powerButton, element negPowerButton
                     , element absButton, element piButton, element sqrtButton
                     , element sinButton, element cosButton, element tanButton
-                    , element logButton, element lnButton, element eButton
+                    , element logButton, element logBaseButton, element lnButton, element eButton
                     ]
                 , UI.div #. "numbers-container" #+
                     [ element nineButton, element eightButton, element sevenButton, element mulButton
@@ -146,7 +147,7 @@ setup window = void $ do
     on UI.click squareButton $ const insertSquare
     on UI.click piButton $ const insertPi
     on UI.click absButton $ const insertAbs
-    on UI.click ansButton $ const appendAns  -- Ovo je važno za funkcionalnost ans gumba
+    on UI.click ansButton $ const appendAns
 
     -- Ostali gumbi
     on UI.click oneButton $ \_ -> appendNum "1"
@@ -166,7 +167,8 @@ setup window = void $ do
     on UI.click mulButton $ const $ appendOp "*"
     on UI.click divButton $ const $ appendOp "/"
     on UI.click percentButton $ const $ appendOp "%"
-    on UI.click logButton $ const $ appendOp "log _()" 
+    on UI.click logButton $ const $ appendFunc "log" True
+    on UI.click logBaseButton $ const $ insertTextAtCursor "inputField" "log _()"
     on UI.click lnButton $ const $ appendOp "ln"
     on UI.click sqrtButton $ const $ appendFunc "sqrt" True
     on UI.click sinButton $ const $ appendFunc "sin" True
@@ -193,18 +195,6 @@ setup window = void $ do
             Right val -> do
                 void $ element resultLabel # set text ("Rezultat: " ++ show val)
                 UI.liftIO $ writeIORef lastResult val -- Spremi zadnji rezultat u ans
-
-
-
-    -- Postavljanje funkcije za izračun
-    on UI.click calculateButton $ \_ -> do
-        inputExpr <- get value input
-        let result = parseExpression inputExpr
-        case result of
-            Left err -> void $ element resultLabel # set text ("Greška: " ++ show err)
-            Right val -> do
-                void $ element resultLabel # set text ("Rezultat: " ++ show val)
-                UI.liftIO $ writeIORef lastResult val
 
 -- Funkcija za statički sadržaj
 loadStatic :: IO FilePath

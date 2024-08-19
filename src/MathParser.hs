@@ -7,7 +7,6 @@ import qualified Text.Parsec.Token as Token
 import Text.Parsec.Expr
 import Data.Functor.Identity (Identity)
 
-
 -- DEFINICIJA FUNKCIJA
 
 -- Kvadratni korijen s rukovanjem greškom
@@ -16,12 +15,16 @@ sqrt' x
   | x < 0 = Left "Korijen je definiran samo za pozitivne brojeve"
   | otherwise = Right (sqrt x)
 
--- Logaritmiranje s bazom s rukovanjem greškom
-logarithm :: Double -> Double -> Either String Double
-logarithm x base
+-- Logaritam s proizvoljnom bazom
+logarithmWithBase :: Double -> Double -> Either String Double
+logarithmWithBase base x
   | x <= 0 = Left "Logaritam je definiran samo za pozitivne brojeve"
   | base <= 1 = Left "Baza logaritma mora biti veća od 1"
   | otherwise = Right (logBase base x)
+
+-- Logaritam baza 10
+logBase10 :: Double -> Double
+logBase10 = logBase 10
 
 -- Prirodni logaritam s rukovanjem greškom
 ln :: Double -> Either String Double
@@ -37,9 +40,7 @@ percentageOf percent number = (percent / 100) * number
 handleError :: Either String Double -> Double
 handleError = either (const 0) id
 
-
 -- DEFINICIJA PARSERA
-
 
 -- Lexer definicija
 lexer :: Token.GenTokenParser String u Identity
@@ -71,11 +72,13 @@ term :: Parser Double
 term = try float
     <|> (fromInteger <$> integer)
     <|> parens expressionParser
+    <|> try (do
+            reserved "log"
+            base <- integer -- Ovdje prepoznaje bazu umjesto crtice
+            x <- parens expressionParser -- Prepoznaje izraz unutar zagrada
+            return $ handleError $ logarithmWithBase (fromInteger base) x)
+    <|> (reserved "log" >> logBase10 <$> parens expressionParser)
     <|> (reserved "sqrt" >> (handleError . sqrt' <$> parens expressionParser))
-    <|> (reserved "log" >> do
-            base <- term
-            x <- parens expressionParser
-            return $ handleError $ logarithm x base)
     <|> (reserved "ln" >> (handleError . ln <$> parens expressionParser))
     <|> (reserved "sin" >> sin <$> parens expressionParser)
     <|> (reserved "cos" >> cos <$> parens expressionParser)
