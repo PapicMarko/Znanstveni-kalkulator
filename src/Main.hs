@@ -5,6 +5,7 @@ module Main where
 import Graphics.UI.Threepenny.Core
 import qualified Graphics.UI.Threepenny as UI
 import MathParser (parseExpression)
+import Text.Printf (printf)
 import Data.IORef (newIORef, readIORef, writeIORef)
 import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>))
@@ -12,9 +13,7 @@ import System.FilePath ((</>))
 void :: Functor f => f a -> f ()
 void = fmap (const ())
 
--- Funkcija za umetanje teksta na poziciju kursora
-insertTextAtCursor :: String -> String -> UI ()
-insertTextAtCursor inputId insertedText = runFunction $ ffi "window.insertTextAtCursor(%1, %2)" inputId insertedText
+-- FUNKCIJE ZA GUI
 
 -- Funkcija za pokretanje GUI aplikacije
 main :: IO ()
@@ -30,6 +29,12 @@ loadCSS path = readFile path
 loadJavaScript :: FilePath -> IO String
 loadJavaScript path = readFile path
 
+-- Funkcija za umetanje teksta na poziciju kursora
+insertTextAtCursor :: String -> String -> UI ()
+insertTextAtCursor inputId insertedText = runFunction $ ffi "window.insertTextAtCursor(%1, %2)" inputId insertedText
+
+
+-- Glavna funkcija za postavljanje GUI-a
 setup :: Window -> UI ()
 setup window = void $ do
     _ <- return window # set UI.title "Znanstveni kalkulator"
@@ -47,10 +52,10 @@ setup window = void $ do
 
     -- Definiranje UI elemenata
     input <- UI.textarea #. "input" # set (attr "placeholder") "Unesite izraz" # set UI.id_ "inputField"
-    resultLabel <- UI.span #. "result" # set UI.text "Rezultat će biti prikazan ovdje"
+    resultLabel <- UI.span #. "result" # set UI.text "Rezultat će biti prikazan ovdje: "
     calculateButton <- UI.button #. "calculate-button" # set UI.text "="
 
-    -- Operator buttons
+    -- Gumbi za funkcije
     addButton <- UI.button #. "button-op" # set UI.text "+"
     subButton <- UI.button #. "button-op" # set UI.text "-"
     mulButton <- UI.button #. "button-op" # set UI.text "*"
@@ -69,13 +74,14 @@ setup window = void $ do
     lparenButton <- UI.button #. "button-op" # set UI.text "("
     rparenButton <- UI.button #. "button-op" # set UI.text ")"
     acButton <- UI.button #. "button-op" # set UI.text "AC"
+    clearButton <- UI.button #. "button-oop" # set UI.text "clear"
     backspaceButton <- UI.button #. "button-op" # set UI.text "⌫"
     percentButton <- UI.button #. "button-op" # set UI.text "%"
     lnButton <- UI.button #. "button-op" # set UI.text "ln"
     eButton <- UI.button #. "button-op" # set UI.text "e"
     negPowerButton <- UI.button #. "button-op" # set UI.text "x^-y"
 
-    -- Number buttons
+    -- Gumbi za brojeve
     oneButton <- UI.button #. "button-num" # set UI.text "1"
     twoButton <- UI.button #. "button-num" # set UI.text "2"
     threeButton <- UI.button #. "button-num" # set UI.text "3"
@@ -88,9 +94,9 @@ setup window = void $ do
     zeroButton <- UI.button #. "button-num" # set UI.text "0"
     dotButton <- UI.button #. "button-num" # set UI.text "."
 
-    -- Control buttons container
+    -- Kontejner za kontrolne gumbe
     controlButtonsContainer <- UI.div #. "control-buttons-container" #+
-        [ element acButton, element backspaceButton ]
+        [ element acButton, element clearButton, element backspaceButton ]
 
     -- Posloži elemente u GUI
     _ <- getBody window #+
@@ -120,9 +126,13 @@ setup window = void $ do
     -- Funkcije za gumbe
     let appendOp op = insertTextAtCursor "inputField" op
     let appendNum num = insertTextAtCursor "inputField" num
+
+    -- Funkcija za dodavanje zagrada ako su one potrebne (npr. kod logaritma, sinus, kosinus..., boolena varijabla needsParenthesis)
     let appendFunc func needsParenthesis = do
             let textToInsert = if needsParenthesis then func ++ "(" else func
             insertTextAtCursor "inputField" textToInsert
+
+    -- Funkcija za dodavanje eulerovog broja
     let appendE = insertTextAtCursor "inputField" "e"
     
     -- Precizne funkcije za kvadriranje, pi i abs
@@ -130,11 +140,12 @@ setup window = void $ do
     let insertPi = insertTextAtCursor "inputField" "pi"
     let insertAbs = insertTextAtCursor "inputField" "abs("
 
-    -- Definiraj appendAns i backspace
+    -- Definiraj appendAns
     let appendAns = do
             lastAns <- UI.liftIO $ readIORef lastResult
             insertTextAtCursor "inputField" (show lastAns)
 
+    -- Definiraj backspace
     let backspace = do
             current <- get value input
             if not (null current)
@@ -149,7 +160,7 @@ setup window = void $ do
     on UI.click absButton $ const insertAbs
     on UI.click ansButton $ const appendAns
 
-    -- Ostali gumbi
+    -- Gumbi za brojeve
     on UI.click oneButton $ \_ -> appendNum "1"
     on UI.click twoButton $ \_ -> appendNum "2"
     on UI.click threeButton $ \_ -> appendNum "3"
@@ -162,12 +173,15 @@ setup window = void $ do
     on UI.click zeroButton $ \_ -> appendNum "0"
     on UI.click dotButton $ \_ -> appendNum "."
 
+    -- Gumbi za operacije
     on UI.click addButton $ const $ appendOp "+"
     on UI.click subButton $ const $ appendOp "-"
     on UI.click mulButton $ const $ appendOp "*"
     on UI.click divButton $ const $ appendOp "/"
+
+    -- Gumbi za funkcije
     on UI.click percentButton $ const $ appendOp "%"
-    on UI.click logButton $ const $ appendFunc "log" True
+    on UI.click logButton $ const $ appendFunc "log" True 
     on UI.click logBaseButton $ const $ insertTextAtCursor "inputField" "log _()"
     on UI.click lnButton $ const $ appendOp "ln"
     on UI.click sqrtButton $ const $ appendFunc "sqrt" True
@@ -178,22 +192,27 @@ setup window = void $ do
     on UI.click eButton $ const appendE
     on UI.click backspaceButton $ const backspace
     on UI.click negPowerButton $ const $ appendFunc "**(-" False
-
     on UI.click lparenButton $ const $ appendOp "("
     on UI.click rparenButton $ const $ appendOp ")"
-    on UI.click acButton $ \_ -> do
-        void $ element input # set value ""
-        void $ element resultLabel # set text "Rezultat će biti prikazan ovdje"
-        liftIO $ writeIORef lastResult 0.0 -- Resetiraj zadnji rezultat
 
-    -- Postavljanje funkcije za izračun
+    -- Gumbi za brisanje
+    on UI.click acButton $ \_ -> do
+        void $ element input # set value "" -- Resetiraj unos
+        void $ element resultLabel # set text "Rezultat će biti prikazan ovdje: " -- Resetiraj tekst rezultata
+        liftIO $ writeIORef lastResult 0.0 -- Resetiraj zadnji rezultat
+    on UI.click clearButton $ \_ -> do
+        void $ element input # set value ""
+        void $ element resultLabel # set text "Rezultat će biti prikazan ovdje:"
+
+    -- Gumb za izračun
     on UI.click calculateButton $ \_ -> do
         inputExpr <- get value input
         let result = parseExpression inputExpr
         case result of
             Left err -> void $ element resultLabel # set text ("Greška: " ++ show err)
             Right val -> do
-                void $ element resultLabel # set text ("Rezultat: " ++ show val)
+                let formattedResult = printf "%.10f" val -- Formatiraj rezultat u decimalni zapis
+                void $ element resultLabel # set text ("Rezultat: " ++ formattedResult)
                 UI.liftIO $ writeIORef lastResult val -- Spremi zadnji rezultat u ans
 
 -- Funkcija za statički sadržaj

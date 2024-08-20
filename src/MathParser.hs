@@ -40,6 +40,7 @@ percentageOf percent number = (percent / 100) * number
 handleError :: Either String Double -> Double
 handleError = either (const 0) id
 
+
 -- DEFINICIJA PARSERA
 
 -- Lexer definicija
