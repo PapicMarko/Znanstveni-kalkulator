@@ -1,3 +1,4 @@
+// Skripta za dodavanje teksta na poziciju kursora u input polje
 (function() {
     window.insertTextAtCursor = function(inputId, insertedText) {
         var input = document.getElementById(inputId);
