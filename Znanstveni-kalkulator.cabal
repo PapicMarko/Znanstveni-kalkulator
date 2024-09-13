@@ -5,8 +5,8 @@ synopsis:            Znanstveni kalkulator
 -- description:
 license:             MIT
 license-file:        LICENSE
-author:              Marko Papić
-maintainer:          marko.papic222@gmail.com
+author:              Marko Papić, Lucija Josipović Deranja
+maintainer:          marko.papic222@gmail.com, lucijaderanja@gmail.com
 -- copyright:
 category:            Math
 build-type:          Simple

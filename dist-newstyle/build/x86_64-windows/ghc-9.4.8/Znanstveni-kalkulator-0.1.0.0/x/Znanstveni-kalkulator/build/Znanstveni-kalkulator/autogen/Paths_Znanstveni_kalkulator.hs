@@ -46,12 +46,12 @@ getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: 
 
 
 bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath
-bindir     = "C:\\cabal\\bin"
-libdir     = "C:\\cabal\\x86_64-windows-ghc-9.4.8\\Znanstveni-kalkulator-0.1.0.0-inplace-Znanstveni-kalkulator"
-dynlibdir  = "C:\\cabal\\x86_64-windows-ghc-9.4.8"
-datadir    = "C:\\cabal\\x86_64-windows-ghc-9.4.8\\Znanstveni-kalkulator-0.1.0.0"
-libexecdir = "C:\\cabal\\Znanstveni-kalkulator-0.1.0.0-inplace-Znanstveni-kalkulator\\x86_64-windows-ghc-9.4.8\\Znanstveni-kalkulator-0.1.0.0"
-sysconfdir = "C:\\cabal\\etc"
+bindir     = "D:\\cabal\\bin"
+libdir     = "D:\\cabal\\x86_64-windows-ghc-9.4.8\\Znanstveni-kalkulator-0.1.0.0-inplace-Znanstveni-kalkulator"
+dynlibdir  = "D:\\cabal\\x86_64-windows-ghc-9.4.8"
+datadir    = "D:\\cabal\\x86_64-windows-ghc-9.4.8\\Znanstveni-kalkulator-0.1.0.0"
+libexecdir = "D:\\cabal\\Znanstveni-kalkulator-0.1.0.0-inplace-Znanstveni-kalkulator\\x86_64-windows-ghc-9.4.8\\Znanstveni-kalkulator-0.1.0.0"
+sysconfdir = "D:\\cabal\\etc"
 
 getBinDir     = catchIO (getEnv "Znanstveni_kalkulator_bindir")     (\_ -> return bindir)
 getLibDir     = catchIO (getEnv "Znanstveni_kalkulator_libdir")     (\_ -> return libdir)
